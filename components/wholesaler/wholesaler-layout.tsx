@@ -2,6 +2,16 @@
 
 import type React from "react"
 import { useState } from "react"
+import { useAuth } from "@/lib/auth-context"
+import { useRouter } from "next/navigation"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface WholesalerLayoutProps {
   children: React.ReactNode
@@ -9,6 +19,13 @@ interface WholesalerLayoutProps {
 
 export default function WholesalerLayout({ children }: WholesalerLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const { user, logout } = useAuth()
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    await logout()
+    router.push("/")
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -25,13 +42,44 @@ export default function WholesalerLayout({ children }: WholesalerLayoutProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 pl-4 border-l border-border">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500"></div>
-            <div className="text-sm">
-              <div className="font-semibold">Global Supplies</div>
-              <div className="text-xs text-muted-foreground">Wholesaler</div>
-            </div>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-3 pl-4 border-l border-border hover:opacity-80 transition-opacity">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center text-white font-bold">
+                  {user?.name?.charAt(0).toUpperCase() || "W"}
+                </div>
+                <div className="text-sm text-left">
+                  <div className="font-semibold">{user?.name || "Wholesaler"}</div>
+                  <div className="text-xs text-muted-foreground capitalize">Wholesaler</div>
+                </div>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">{user?.name || "Wholesaler"}</p>
+                  <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => router.push("/wholesaler/profile")}>
+                👤 View Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push("/wholesaler/inventory")}>
+                📦 Inventory
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push("/wholesaler/orders")}>
+                🛒 Orders
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push("/wholesaler/settings")}>
+                ⚙️ Settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                🚪 Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
