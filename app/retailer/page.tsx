@@ -1,9 +1,8 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
-import { useState } from "react"
 import RetailerLayout from "@/components/retailer/retailer-layout"
 import InventoryTable from "@/components/retailer/inventory-table"
 import SalesMetrics from "@/components/retailer/sales-metrics"
@@ -17,51 +16,38 @@ export default function RetailerDashboard() {
   const { user, isAuthenticated, loading } = useAuth()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("overview")
-  const [products, setProducts] = useState([
-    {
-      id: "1",
-      name: "Wireless Headphones",
-      sku: "WH-001",
-      quantity: 45,
-      price: 6639, // ₹6,639 (converted from $79.99)
-      category: "electronics",
-      status: "in-stock",
-    },
-    {
-      id: "2",
-      name: "Organic Coffee Beans",
-      sku: "CB-002",
-      quantity: 120,
-      price: 1078, // ₹1,078 (converted from $12.99)
-      category: "groceries",
-      status: "in-stock",
-    },
-    {
-      id: "3",
-      name: "Cotton T-Shirt",
-      sku: "CT-003",
-      quantity: 8,
-      price: 2074, // ₹2,074 (converted from $24.99)
-      category: "clothing",
-      status: "low-stock",
-    },
-    {
-      id: "4",
-      name: "Smart Speaker",
-      sku: "SS-004",
-      quantity: 0,
-      price: 8299, // ₹8,299 (converted from $99.99)
-      category: "electronics",
-      status: "out-of-stock",
-    },
-  ])
-  const [showAddProduct, setShowAddProduct] = useState(false)
+  const [products, setProducts] = useState<any[]>([])
+  const [loadingProducts, setLoadingProducts] = useState(true)
+
+  // Fetch products from database
+  const fetchProducts = async () => {
+    if (!user) return
+    
+    setLoadingProducts(true)
+    try {
+      const response = await fetch(`/api/products?retailer_id=${user.id}`)
+      if (response.ok) {
+        const data = await response.json()
+        setProducts(data.products || [])
+      }
+    } catch (error) {
+      console.error("Error fetching products:", error)
+    } finally {
+      setLoadingProducts(false)
+    }
+  }
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.push("/")
     }
   }, [isAuthenticated, loading, router])
+
+  useEffect(() => {
+    if (user && user.role === "retailer") {
+      fetchProducts()
+    }
+  }, [user])
 
   if (loading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>
@@ -71,17 +57,46 @@ export default function RetailerDashboard() {
     return null
   }
 
-  const handleAddProduct = (product: any) => {
-    setProducts([...products, { ...product, id: Date.now().toString() }])
-    setShowAddProduct(false)
+  const handleAddProduct = async (product: any) => {
+    await fetchProducts() // Refresh product list
   }
 
-  const handleUpdateProduct = (id: string, updatedProduct: any) => {
-    setProducts(products.map((p) => (p.id === id ? updatedProduct : p)))
+  const handleUpdateProduct = async (id: string, updates: Partial<any>) => {
+    try {
+      const response = await fetch("/api/products", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...updates }),
+      })
+
+      if (response.ok) {
+        await fetchProducts() // Refresh product list
+      } else {
+        const { error } = await response.json()
+        alert(`Error updating product: ${error}`)
+      }
+    } catch (error) {
+      console.error("Error updating product:", error)
+      alert("Failed to update product")
+    }
   }
 
-  const handleDeleteProduct = (id: string) => {
-    setProducts(products.filter((p) => p.id !== id))
+  const handleDeleteProduct = async (id: string) => {
+    try {
+      const response = await fetch(`/api/products?id=${id}`, {
+        method: "DELETE",
+      })
+
+      if (response.ok) {
+        await fetchProducts() // Refresh product list
+      } else {
+        const { error } = await response.json()
+        alert(`Error deleting product: ${error}`)
+      }
+    } catch (error) {
+      console.error("Error deleting product:", error)
+      alert("Failed to delete product")
+    }
   }
 
   return (
@@ -94,7 +109,7 @@ export default function RetailerDashboard() {
 
         <SalesMetrics products={products} />
 
-        <InventoryAlerts />
+        <InventoryAlerts products={products} />
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>

@@ -11,36 +11,42 @@ interface Alert {
   product?: string
 }
 
-interface InventoryAlertsProps {
-  alerts?: Alert[]
+interface Product {
+  id: string
+  name: string
+  quantity: number
+  status: string
 }
 
-export default function InventoryAlerts({ alerts }: InventoryAlertsProps) {
-  const defaultAlerts: Alert[] = [
-    {
-      id: "1",
-      type: "critical",
-      title: "Out of Stock",
-      message: "Smart Speaker is out of stock",
-      product: "Smart Speaker",
-    },
-    {
-      id: "2",
-      type: "warning",
-      title: "Low Stock Alert",
-      message: "Cotton T-Shirt has only 8 units remaining",
-      product: "Cotton T-Shirt",
-    },
-    {
-      id: "3",
-      type: "info",
-      title: "Reorder Suggestion",
-      message: "Organic Coffee Beans selling well, consider reordering",
-      product: "Organic Coffee Beans",
-    },
-  ]
+interface InventoryAlertsProps {
+  products?: Product[]
+}
 
-  const displayAlerts = alerts || defaultAlerts
+export default function InventoryAlerts({ products = [] }: InventoryAlertsProps) {
+  // Generate alerts from actual product data
+  const generatedAlerts: Alert[] = []
+
+  products.forEach((product) => {
+    if (product.status === "out-of-stock") {
+      generatedAlerts.push({
+        id: `critical-${product.id}`,
+        type: "critical",
+        title: "Out of Stock",
+        message: `${product.name} is out of stock`,
+        product: product.name,
+      })
+    } else if (product.status === "low-stock") {
+      generatedAlerts.push({
+        id: `warning-${product.id}`,
+        type: "warning",
+        title: "Low Stock Alert",
+        message: `${product.name} has only ${product.quantity} units remaining`,
+        product: product.name,
+      })
+    }
+  })
+
+  const displayAlerts = generatedAlerts.length > 0 ? generatedAlerts : []
 
   const getAlertStyles = (type: string) => {
     switch (type) {

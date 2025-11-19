@@ -8,17 +8,18 @@ import { formatCurrency } from "@/lib/currency"
 interface Product {
   id: string
   name: string
-  sku: string
+  description?: string
   quantity: number
   price: number
   category: string
   status: string
+  image_url?: string | null
 }
 
 interface InventoryTableProps {
   products: Product[]
-  onUpdate: (id: string, product: Product) => void
-  onDelete: (id: string) => void
+  onUpdate: (id: string, updates: Partial<Product>) => Promise<void>
+  onDelete: (id: string) => Promise<void>
 }
 
 export default function InventoryTable({ products, onUpdate, onDelete }: InventoryTableProps) {
@@ -43,10 +44,26 @@ export default function InventoryTable({ products, onUpdate, onDelete }: Invento
     setEditValues(product)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (editingId && editValues) {
-      onUpdate(editingId, { ...editValues } as Product)
+      // Calculate status based on quantity
+      let status: "in-stock" | "low-stock" | "out-of-stock" = "out-of-stock"
+      const quantity = editValues.quantity || 0
+      
+      if (quantity > 10) {
+        status = "in-stock"
+      } else if (quantity > 0) {
+        status = "low-stock"
+      }
+
+      await onUpdate(editingId, { ...editValues, status })
       setEditingId(null)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (confirm("Are you sure you want to delete this product?")) {
+      await onDelete(id)
     }
   }
 
@@ -57,7 +74,7 @@ export default function InventoryTable({ products, onUpdate, onDelete }: Invento
           <thead className="bg-accent/50 border-b border-border">
             <tr>
               <th className="text-left px-6 py-3 font-semibold">Product Name</th>
-              <th className="text-left px-6 py-3 font-semibold">SKU</th>
+              <th className="text-left px-6 py-3 font-semibold">Category</th>
               <th className="text-left px-6 py-3 font-semibold">Quantity</th>
               <th className="text-left px-6 py-3 font-semibold">Price</th>
               <th className="text-left px-6 py-3 font-semibold">Status</th>
@@ -65,21 +82,33 @@ export default function InventoryTable({ products, onUpdate, onDelete }: Invento
             </tr>
           </thead>
           <tbody>
-            {products.map((product) => (
-              <tr key={product.id} className="border-b border-border hover:bg-accent/30 transition-colors">
-                <td className="px-6 py-4">
-                  {editingId === product.id ? (
-                    <input
-                      type="text"
-                      value={editValues.name || ""}
-                      onChange={(e) => setEditValues({ ...editValues, name: e.target.value })}
-                      className="px-2 py-1 rounded border border-border bg-input text-foreground"
-                    />
-                  ) : (
-                    product.name
-                  )}
+            {products.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
+                  No products yet. Add your first product using the form above.
                 </td>
-                <td className="px-6 py-4 text-muted-foreground">{product.sku}</td>
+              </tr>
+            ) : (
+              products.map((product) => (
+                <tr key={product.id} className="border-b border-border hover:bg-accent/30 transition-colors">
+                  <td className="px-6 py-4">
+                    {editingId === product.id ? (
+                      <input
+                        type="text"
+                        value={editValues.name || ""}
+                        onChange={(e) => setEditValues({ ...editValues, name: e.target.value })}
+                        className="px-2 py-1 rounded border border-border bg-input text-foreground"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        {product.image_url && (
+                          <img src={product.image_url} alt={product.name} className="w-10 h-10 object-cover rounded" />
+                        )}
+                        <span>{product.name}</span>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-muted-foreground capitalize">{product.category}</td>
                 <td className="px-6 py-4">
                   {editingId === product.id ? (
                     <input
@@ -135,7 +164,7 @@ export default function InventoryTable({ products, onUpdate, onDelete }: Invento
                         </Button>
                         <Button
                           size="sm"
-                          onClick={() => onDelete(product.id)}
+                          onClick={() => handleDelete(product.id)}
                           className="bg-red-600 hover:bg-red-700 text-white"
                         >
                           Delete
@@ -145,7 +174,8 @@ export default function InventoryTable({ products, onUpdate, onDelete }: Invento
                   </div>
                 </td>
               </tr>
-            ))}
+            ))
+          )}
           </tbody>
         </table>
       </div>
