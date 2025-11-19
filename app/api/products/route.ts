@@ -52,13 +52,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { data: { user } } = await supabase.auth.getUser(accessToken)
+    // Create authenticated Supabase client with user's access token
+    const { createClient } = require('@supabase/supabase-js')
+    const authenticatedSupabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
+      }
+    )
+
+    const { data: { user } } = await authenticatedSupabase.auth.getUser()
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     // Check if user is a retailer
-    const { data: profile } = await supabase
+    const { data: profile } = await authenticatedSupabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
@@ -79,8 +93,8 @@ export async function POST(request: NextRequest) {
       status = "low-stock"
     }
 
-    // Create product in database
-    const { data: product, error } = await supabase
+    // Create product in database using authenticated client
+    const { data: product, error } = await authenticatedSupabase
       .from("products")
       .insert({
         ...validatedData,
@@ -91,6 +105,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
+      console.error("[Products] Insert error:", error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
@@ -113,7 +128,21 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { data: { user } } = await supabase.auth.getUser(accessToken)
+    // Create authenticated Supabase client
+    const { createClient } = require('@supabase/supabase-js')
+    const authenticatedSupabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
+      }
+    )
+
+    const { data: { user } } = await authenticatedSupabase.auth.getUser()
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
@@ -126,7 +155,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Check if product belongs to user
-    const { data: product } = await supabase
+    const { data: product } = await authenticatedSupabase
       .from("products")
       .select("retailer_id")
       .eq("id", id)
@@ -147,8 +176,8 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    // Update product
-    const { data: updatedProduct, error } = await supabase
+    // Update product using authenticated client
+    const { data: updatedProduct, error } = await authenticatedSupabase
       .from("products")
       .update(updates)
       .eq("id", id)
@@ -175,7 +204,21 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { data: { user } } = await supabase.auth.getUser(accessToken)
+    // Create authenticated Supabase client
+    const { createClient } = require('@supabase/supabase-js')
+    const authenticatedSupabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
+      }
+    )
+
+    const { data: { user } } = await authenticatedSupabase.auth.getUser()
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
@@ -188,7 +231,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check if product belongs to user
-    const { data: product } = await supabase
+    const { data: product } = await authenticatedSupabase
       .from("products")
       .select("retailer_id, image_url")
       .eq("id", id)
@@ -202,14 +245,15 @@ export async function DELETE(request: NextRequest) {
     if (product.image_url) {
       const imagePath = product.image_url.split("/").pop()
       if (imagePath) {
-        await supabase.storage.from("product-images").remove([`${user.id}/${imagePath}`])
+        await authenticatedSupabase.storage.from("product-images").remove([`${user.id}/${imagePath}`])
       }
     }
 
-    // Delete product
-    const { error } = await supabase.from("products").delete().eq("id", id)
+    // Delete product using authenticated client
+    const { error } = await authenticatedSupabase.from("products").delete().eq("id", id)
 
     if (error) {
+      console.error("[Products] Delete error:", error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
