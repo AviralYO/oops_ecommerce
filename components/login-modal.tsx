@@ -50,16 +50,17 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
     setError(null)
 
     try {
-      await login(email, password)
-      console.log("[v0] Login successful, redirecting...")
+      const userData = await login(email, password)
+      console.log("[v0] Login successful, redirecting based on role:", userData?.role)
 
+      // Redirect based on ACTUAL user role from database, not selected role
       setTimeout(() => {
-        if (selectedRole === "customer") {
-          router.push("/customer")
-        } else if (selectedRole === "retailer") {
+        if (userData?.role === "retailer") {
           router.push("/retailer")
-        } else if (selectedRole === "wholesaler") {
+        } else if (userData?.role === "wholesaler") {
           router.push("/wholesaler")
+        } else {
+          router.push("/customer")
         }
         onClose()
       }, 500)
@@ -76,16 +77,17 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
     setError(null)
 
     try {
-      await signup(name, email, password, selectedRole || "customer")
-      console.log("[v0] Signup successful, redirecting...")
+      const userData = await signup(name, email, password, selectedRole || "customer")
+      console.log("[v0] Signup successful, redirecting based on role:", userData?.role)
 
+      // Redirect based on ACTUAL user role from database
       setTimeout(() => {
-        if (selectedRole === "customer") {
-          router.push("/customer")
-        } else if (selectedRole === "retailer") {
+        if (userData?.role === "retailer") {
           router.push("/retailer")
-        } else if (selectedRole === "wholesaler") {
+        } else if (userData?.role === "wholesaler") {
           router.push("/wholesaler")
+        } else {
+          router.push("/customer")
         }
         onClose()
       }, 500)

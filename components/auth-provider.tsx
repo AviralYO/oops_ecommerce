@@ -48,7 +48,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       const userData = await response.json()
       setUser(userData)
-      console.log("[v0] User logged in:", userData.email)
+      console.log("[v0] User logged in:", userData.email, "Role:", userData.role)
+      return userData
     } catch (err) {
       const message = err instanceof Error ? err.message : "Login failed"
       setError(message)
@@ -75,7 +76,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       const userData = await response.json()
       setUser(userData)
-      console.log("[v0] User signed up:", userData.email)
+      console.log("[v0] User signed up:", userData.email, "Role:", userData.role)
+      return userData
     } catch (err) {
       const message = err instanceof Error ? err.message : "Signup failed"
       setError(message)
