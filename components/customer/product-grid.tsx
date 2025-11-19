@@ -1,75 +1,21 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { formatCurrency, convertUSDtoINR } from "@/lib/currency"
+import { formatCurrency } from "@/lib/currency"
 
 interface Product {
   id: string
   name: string
+  description: string
   price: number
-  rating: number
-  image: string
+  quantity: number
+  image_url: string | null
   category: string
-  retailer: string
+  status: string
+  retailer_id: string
 }
-
-const MOCK_PRODUCTS: Product[] = [
-  {
-    id: "1",
-    name: "Wireless Headphones",
-    price: convertUSDtoINR(79.99),
-    rating: 4.5,
-    image: "/wireless-headphones.png",
-    category: "electronics",
-    retailer: "TechStore",
-  },
-  {
-    id: "2",
-    name: "Organic Coffee Beans",
-    price: convertUSDtoINR(12.99),
-    rating: 4.8,
-    image: "/pile-of-coffee-beans.png",
-    category: "groceries",
-    retailer: "Fresh Market",
-  },
-  {
-    id: "3",
-    name: "Cotton T-Shirt",
-    price: convertUSDtoINR(24.99),
-    rating: 4.2,
-    image: "/cotton-tshirt.png",
-    category: "clothing",
-    retailer: "Fashion Hub",
-  },
-  {
-    id: "4",
-    name: "JavaScript Guide",
-    price: convertUSDtoINR(34.99),
-    rating: 4.7,
-    image: "/javascript-book.png",
-    category: "books",
-    retailer: "BookWorld",
-  },
-  {
-    id: "5",
-    name: "Smart Speaker",
-    price: convertUSDtoINR(99.99),
-    rating: 4.6,
-    image: "/smart-speaker.png",
-    category: "electronics",
-    retailer: "TechStore",
-  },
-  {
-    id: "6",
-    name: "Yoga Mat",
-    price: convertUSDtoINR(29.99),
-    rating: 4.4,
-    image: "/rolled-yoga-mat.png",
-    category: "home",
-    retailer: "Home Living",
-  },
-]
 
 interface ProductGridProps {
   onAddToCart: (product: { id: string; name: string; price: number; image: string }) => void
@@ -77,8 +23,41 @@ interface ProductGridProps {
 }
 
 export default function ProductGrid({ onAddToCart, selectedCategory }: ProductGridProps) {
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchProducts()
+  }, [])
+
+  const fetchProducts = async () => {
+    setLoading(true)
+    try {
+      // Fetch all products that are in-stock or low-stock (not out-of-stock)
+      const response = await fetch("/api/products")
+      if (response.ok) {
+        const data = await response.json()
+        // Filter out out-of-stock products
+        const availableProducts = (data.products || []).filter((p: Product) => p.status !== "out-of-stock")
+        setProducts(availableProducts)
+      }
+    } catch (error) {
+      console.error("Error fetching products:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const filteredProducts =
-    selectedCategory === "all" ? MOCK_PRODUCTS : MOCK_PRODUCTS.filter((p) => p.category === selectedCategory)
+    selectedCategory === "all" ? products : products.filter((p) => p.category === selectedCategory)
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -99,37 +78,56 @@ export default function ProductGrid({ onAddToCart, selectedCategory }: ProductGr
               className="bg-card border-border overflow-hidden hover:border-primary/50 transition-all hover:shadow-lg"
             >
               <div className="relative h-48 bg-gradient-to-br from-slate-200 to-slate-300 overflow-hidden">
-                <img
-                  src={product.image || "/placeholder.svg"}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
-                />
+                {product.image_url ? (
+                  <img
+                    src={product.image_url}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-4xl">
+                    📦
+                  </div>
+                )}
               </div>
 
               <div className="p-4">
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-semibold text-foreground">{product.name}</h3>
-                  <span className="text-xs bg-gradient-to-r from-orange-500/20 to-amber-500/20 text-orange-700 px-2 py-1 rounded">
-                    {product.category}
+                  <h3 className="font-semibold text-foreground line-clamp-1">{product.name}</h3>
+                  <span className={`text-xs px-2 py-1 rounded capitalize ${
+                    product.status === "in-stock" 
+                      ? "bg-green-100 text-green-700" 
+                      : "bg-yellow-100 text-yellow-700"
+                  }`}>
+                    {product.status.replace("-", " ")}
                   </span>
                 </div>
 
-                <p className="text-xs text-muted-foreground mb-3">by {product.retailer}</p>
+                <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{product.description}</p>
+                <p className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded inline-block mb-3 capitalize">
+                  {product.category}
+                </p>
 
                 <div className="flex items-center justify-between mb-4">
                   <div className="text-lg font-bold text-foreground">{formatCurrency(product.price)}</div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm">⭐ {product.rating}</span>
+                  <div className="text-xs text-muted-foreground">
+                    {product.quantity} available
                   </div>
                 </div>
 
                 <Button
                   onClick={() =>
-                    onAddToCart({ id: product.id, name: product.name, price: product.price, image: product.image })
+                    onAddToCart({ 
+                      id: product.id, 
+                      name: product.name, 
+                      price: product.price, 
+                      image: product.image_url || "/placeholder.svg" 
+                    })
                   }
-                  className="w-full bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-semibold"
+                  disabled={product.status === "out-of-stock"}
+                  className="w-full bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-semibold disabled:opacity-50"
                 >
-                  Add to Cart
+                  {product.status === "out-of-stock" ? "Out of Stock" : "Add to Cart"}
                 </Button>
               </div>
             </Card>
