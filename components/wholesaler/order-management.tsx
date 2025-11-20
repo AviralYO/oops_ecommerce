@@ -19,9 +19,10 @@ interface WholesaleOrder {
 interface OrderManagementProps {
   orders?: WholesaleOrder[]
   onStatusUpdate?: (id: string, status: string) => void
+  searchTerm?: string
 }
 
-export default function OrderManagement({ orders, onStatusUpdate }: OrderManagementProps) {
+export default function OrderManagement({ orders, onStatusUpdate, searchTerm = "" }: OrderManagementProps) {
   const [localOrders, setLocalOrders] = useState<WholesaleOrder[]>(
     orders || [
       {
@@ -97,6 +98,13 @@ export default function OrderManagement({ orders, onStatusUpdate }: OrderManagem
     }
     return statusFlow[current] || current
   }
+  
+  const filteredOrders = localOrders.filter((order) => {
+    const matchesSearch = searchTerm === "" || 
+                         order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         order.retailer.toLowerCase().includes(searchTerm.toLowerCase())
+    return matchesSearch
+  })
 
   return (
     <Card className="bg-card border-border overflow-hidden">
@@ -119,8 +127,15 @@ export default function OrderManagement({ orders, onStatusUpdate }: OrderManagem
             </tr>
           </thead>
           <tbody>
-            {localOrders.map((order) => (
-              <tr key={order.id} className="border-b border-border hover:bg-accent/30 transition-colors">
+            {filteredOrders.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">
+                  {searchTerm ? "No orders match your search." : "No orders yet."}
+                </td>
+              </tr>
+            ) : (
+              filteredOrders.map((order) => (
+                <tr key={order.id} className="border-b border-border hover:bg-accent/30 transition-colors">
                 <td className="px-6 py-4 font-semibold">{order.orderNumber}</td>
                 <td className="px-6 py-4">{order.retailer}</td>
                 <td className="px-6 py-4">{order.quantity} units</td>
@@ -141,7 +156,8 @@ export default function OrderManagement({ orders, onStatusUpdate }: OrderManagem
                   )}
                 </td>
               </tr>
-            ))}
+              ))
+            )}
           </tbody>
         </table>
       </div>

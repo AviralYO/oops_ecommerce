@@ -15,9 +15,10 @@ interface RetailerConnection {
 
 interface RetailerConnectionsProps {
   retailers?: RetailerConnection[]
+  searchTerm?: string
 }
 
-export default function RetailerConnections({ retailers }: RetailerConnectionsProps) {
+export default function RetailerConnections({ retailers, searchTerm = "" }: RetailerConnectionsProps) {
   const defaultRetailers: RetailerConnection[] = [
     {
       id: "1",
@@ -58,12 +59,24 @@ export default function RetailerConnections({ retailers }: RetailerConnectionsPr
   ]
 
   const displayRetailers = retailers || defaultRetailers
+  
+  const filteredRetailers = displayRetailers.filter((retailer) => {
+    const matchesSearch = searchTerm === "" || 
+                         retailer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         retailer.location.toLowerCase().includes(searchTerm.toLowerCase())
+    return matchesSearch
+  })
 
   return (
     <Card className="bg-card border-border p-6">
       <h3 className="text-lg font-bold mb-4">Connected Retailers</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {displayRetailers.map((retailer) => (
+      {filteredRetailers.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground">
+          {searchTerm ? "No retailers match your search." : "No connected retailers yet."}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filteredRetailers.map((retailer) => (
           <div key={retailer.id} className="p-4 rounded-lg bg-accent/30 border border-border">
             <div className="flex items-start justify-between mb-3">
               <div>
@@ -90,8 +103,9 @@ export default function RetailerConnections({ retailers }: RetailerConnectionsPr
               View Details
             </Button>
           </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </Card>
   )
 }

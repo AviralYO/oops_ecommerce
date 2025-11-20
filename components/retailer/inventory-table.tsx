@@ -20,11 +20,20 @@ interface InventoryTableProps {
   products: Product[]
   onUpdate: (id: string, updates: Partial<Product>) => Promise<void>
   onDelete: (id: string) => Promise<void>
+  searchTerm?: string
 }
 
-export default function InventoryTable({ products, onUpdate, onDelete }: InventoryTableProps) {
+export default function InventoryTable({ products, onUpdate, onDelete, searchTerm = "" }: InventoryTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValues, setEditValues] = useState<Partial<Product>>({})
+  
+  const filteredProducts = products.filter((p) => {
+    const matchesSearch = searchTerm === "" || 
+                         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         p.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (p.description || "").toLowerCase().includes(searchTerm.toLowerCase())
+    return matchesSearch
+  })
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -82,14 +91,14 @@ export default function InventoryTable({ products, onUpdate, onDelete }: Invento
             </tr>
           </thead>
           <tbody>
-            {products.length === 0 ? (
+            {filteredProducts.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
-                  No products yet. Add your first product using the form above.
+                  {searchTerm ? "No products match your search." : "No products yet. Add your first product using the form above."}
                 </td>
               </tr>
             ) : (
-              products.map((product) => (
+              filteredProducts.map((product) => (
                 <tr key={product.id} className="border-b border-border hover:bg-accent/30 transition-colors">
                   <td className="px-6 py-4">
                     {editingId === product.id ? (

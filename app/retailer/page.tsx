@@ -18,6 +18,7 @@ export default function RetailerDashboard() {
   const [activeTab, setActiveTab] = useState("overview")
   const [products, setProducts] = useState<any[]>([])
   const [loadingProducts, setLoadingProducts] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("")
 
   // Fetch products from database
   const fetchProducts = async () => {
@@ -120,7 +121,19 @@ export default function RetailerDashboard() {
           </TabsList>
 
           <TabsContent value="overview">
-            <InventoryTable products={products} onUpdate={handleUpdateProduct} onDelete={handleDeleteProduct} />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold">Inventory</h2>
+                <input
+                  type="text"
+                  placeholder="Search products..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="max-w-xs px-4 py-2 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+              <InventoryTable products={products} onUpdate={handleUpdateProduct} onDelete={handleDeleteProduct} searchTerm={searchTerm} />
+            </div>
           </TabsContent>
 
           <TabsContent value="orders">

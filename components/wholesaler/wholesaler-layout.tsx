@@ -12,6 +12,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Button } from "@/components/ui/button"
+import { useTheme } from "next-themes"
+import { Moon, Sun } from "lucide-react"
 
 interface WholesalerLayoutProps {
   children: React.ReactNode
@@ -42,8 +45,10 @@ export default function WholesalerLayout({ children }: WholesalerLayoutProps) {
             </div>
           </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          <div className="flex items-center gap-4">
+            <ThemeToggleButton />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-3 pl-4 border-l border-border hover:opacity-80 transition-opacity">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center text-white font-bold">
                   {user?.name?.charAt(0).toUpperCase() || "W"}
@@ -62,6 +67,8 @@ export default function WholesalerLayout({ children }: WholesalerLayoutProps) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <ThemeToggle />
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => router.push("/wholesaler/profile")}>
                 👤 View Profile
               </DropdownMenuItem>
@@ -79,7 +86,8 @@ export default function WholesalerLayout({ children }: WholesalerLayoutProps) {
                 🚪 Logout
               </DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
+            </DropdownMenu>
+          </div>
         </div>
       </header>
 
@@ -129,5 +137,44 @@ export default function WholesalerLayout({ children }: WholesalerLayoutProps) {
         <main className="flex-1 p-4 sm:p-6 lg:p-8 w-full">{children}</main>
       </div>
     </div>
+  )
+}
+
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme()
+  
+  return (
+    <DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+      {theme === "dark" ? (
+        <>
+          <Sun className="mr-2 h-4 w-4" />
+          <span>Light Mode</span>
+        </>
+      ) : (
+        <>
+          <Moon className="mr-2 h-4 w-4" />
+          <span>Dark Mode</span>
+        </>
+      )}
+    </DropdownMenuItem>
+  )
+}
+
+function ThemeToggleButton() {
+  const { theme, setTheme } = useTheme()
+  
+  return (
+    <Button
+      variant="outline"
+      size="icon"
+      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+      className="rounded-lg"
+    >
+      {theme === "dark" ? (
+        <Sun className="h-5 w-5" />
+      ) : (
+        <Moon className="h-5 w-5" />
+      )}
+    </Button>
   )
 }

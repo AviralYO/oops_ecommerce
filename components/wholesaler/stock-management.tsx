@@ -15,9 +15,10 @@ interface StockItem {
 
 interface StockManagementProps {
   items?: StockItem[]
+  searchTerm?: string
 }
 
-export default function StockManagement({ items }: StockManagementProps) {
+export default function StockManagement({ items, searchTerm = "" }: StockManagementProps) {
   const defaultItems: StockItem[] = [
     {
       id: "1",
@@ -58,6 +59,13 @@ export default function StockManagement({ items }: StockManagementProps) {
   ]
 
   const displayItems = items || defaultItems
+  
+  const filteredItems = displayItems.filter((item) => {
+    const matchesSearch = searchTerm === "" || 
+                         item.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         item.sku.toLowerCase().includes(searchTerm.toLowerCase())
+    return matchesSearch
+  })
 
   const getStockStatus = (quantity: number, minStock: number) => {
     if (quantity < minStock) return "low"
@@ -99,9 +107,16 @@ export default function StockManagement({ items }: StockManagementProps) {
             </tr>
           </thead>
           <tbody>
-            {displayItems.map((item) => {
-              const status = getStockStatus(item.quantity, item.minStock)
-              return (
+            {filteredItems.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">
+                  {searchTerm ? "No stock items match your search." : "No stock items yet."}
+                </td>
+              </tr>
+            ) : (
+              filteredItems.map((item) => {
+                const status = getStockStatus(item.quantity, item.minStock)
+                return (
                 <tr key={item.id} className="border-b border-border hover:bg-accent/30 transition-colors">
                   <td className="px-6 py-4 font-semibold">{item.productName}</td>
                   <td className="px-6 py-4 text-muted-foreground">{item.sku}</td>
@@ -115,8 +130,9 @@ export default function StockManagement({ items }: StockManagementProps) {
                     </span>
                   </td>
                 </tr>
-              )
-            })}
+                )
+              })
+            )}
           </tbody>
         </table>
       </div>
