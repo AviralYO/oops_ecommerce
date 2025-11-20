@@ -20,9 +20,10 @@ interface Product {
 interface ProductGridProps {
   onAddToCart: (product: { id: string; name: string; price: number; image: string }) => void
   selectedCategory: string
+  searchTerm?: string
 }
 
-export default function ProductGrid({ onAddToCart, selectedCategory }: ProductGridProps) {
+export default function ProductGrid({ onAddToCart, selectedCategory, searchTerm = "" }: ProductGridProps) {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -48,8 +49,13 @@ export default function ProductGrid({ onAddToCart, selectedCategory }: ProductGr
     }
   }
 
-  const filteredProducts =
-    selectedCategory === "all" ? products : products.filter((p) => p.category === selectedCategory)
+  const filteredProducts = products.filter((p) => {
+    const matchesCategory = selectedCategory === "all" || p.category === selectedCategory
+    const matchesSearch = searchTerm === "" || 
+                         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         p.description.toLowerCase().includes(searchTerm.toLowerCase())
+    return matchesCategory && matchesSearch
+  })
 
   if (loading) {
     return (
@@ -83,6 +89,11 @@ export default function ProductGrid({ onAddToCart, selectedCategory }: ProductGr
                     src={product.image_url}
                     alt={product.name}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      console.error('Image failed to load:', product.image_url)
+                      e.currentTarget.style.display = 'none'
+                      e.currentTarget.parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center text-4xl">📦</div>'
+                    }}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-4xl">

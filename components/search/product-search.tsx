@@ -1,76 +1,74 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { formatCurrency, convertUSDtoINR } from "@/lib/currency"
+import { formatCurrency } from "@/lib/currency"
 
 interface Product {
   id: string
   name: string
+  description: string
   price: number
+  quantity: number
+  image_url: string | null
   category: string
-  rating: number
-  reviews: number
-  inStock: boolean
+  status: string
+  retailer_id: string
 }
 
 interface ProductSearchProps {
-  products?: Product[]
   onProductSelect?: (product: Product) => void
 }
 
-export default function ProductSearch({ products, onProductSelect }: ProductSearchProps) {
+export default function ProductSearch({ onProductSelect }: ProductSearchProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
-  const [priceRange, setPriceRange] = useState([0, 10000]) // Updated to INR range
+  const [priceRange, setPriceRange] = useState([0, 10000])
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const defaultProducts: Product[] = [
-    {
-      id: "1",
-      name: "Wireless Headphones",
-      price: convertUSDtoINR(79.99),
-      category: "electronics",
-      rating: 4.5,
-      reviews: 128,
-      inStock: true,
-    },
-    {
-      id: "2",
-      name: "Organic Coffee Beans",
-      price: convertUSDtoINR(12.99),
-      category: "groceries",
-      rating: 4.8,
-      reviews: 256,
-      inStock: true,
-    },
-    { id: "3", name: "Cotton T-Shirt", price: convertUSDtoINR(24.99), category: "clothing", rating: 4.2, reviews: 89, inStock: true },
-    {
-      id: "4",
-      name: "Smart Speaker",
-      price: convertUSDtoINR(99.99),
-      category: "electronics",
-      rating: 4.6,
-      reviews: 342,
-      inStock: false,
-    },
-    { id: "5", name: "Running Shoes", price: convertUSDtoINR(89.99), category: "clothing", rating: 4.7, reviews: 201, inStock: true },
-    { id: "6", name: "Coffee Maker", price: convertUSDtoINR(45.99), category: "home", rating: 4.4, reviews: 156, inStock: true },
-  ]
+  const categories = ["all", "electronics", "groceries", "clothing", "books", "home"]
 
-  const displayProducts = products || defaultProducts
-  const categories = ["all", "electronics", "groceries", "clothing", "home"]
+  useEffect(() => {
+    fetchProducts()
+  }, [])
+
+  const fetchProducts = async () => {
+    setLoading(true)
+    try {
+      const response = await fetch("/api/products")
+      if (response.ok) {
+        const data = await response.json()
+        const availableProducts = (data.products || []).filter((p: Product) => p.status !== "out-of-stock")
+        setProducts(availableProducts)
+      }
+    } catch (error) {
+      console.error("Error fetching products:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filteredProducts = useMemo(() => {
-    return displayProducts.filter((product) => {
-      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase())
+    return products.filter((product) => {
+      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           product.description.toLowerCase().includes(searchTerm.toLowerCase())
       const matchesCategory = selectedCategory === "all" || product.category === selectedCategory
       const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1]
       return matchesSearch && matchesCategory && matchesPrice
     })
-  }, [displayProducts, searchTerm, selectedCategory, priceRange])
+  }, [products, searchTerm, selectedCategory, priceRange])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -142,23 +140,42 @@ export default function ProductSearch({ products, onProductSelect }: ProductSear
           filteredProducts.map((product) => (
             <Card
               key={product.id}
-              className="bg-card border-border p-4 hover:border-orange-500 transition-colors cursor-pointer"
+              className="bg-card border-border overflow-hidden hover:border-orange-500 transition-colors cursor-pointer"
               onClick={() => onProductSelect?.(product)}
             >
-              <div className="mb-3">
+              <div className="relative h-48 bg-gradient-to-br from-slate-200 to-slate-300 overflow-hidden">
+                {product.image_url ? (
+                  <img
+                    src={product.image_url}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-4xl">
+                    📦
+                  </div>
+                )}
+              </div>
+              <div className="p-4">
                 <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold text-sm">{product.name}</h3>
-                  {!product.inStock && <Badge className="bg-red-500/20 text-red-700">Out of Stock</Badge>}
+                  <h3 className="font-semibold">{product.name}</h3>
+                  <Badge 
+                    className={
+                      product.status === "in-stock" 
+                        ? "bg-green-100 text-green-700" 
+                        : "bg-yellow-100 text-yellow-700"
+                    }
+                  >
+                    {product.status.replace("-", " ")}
+                  </Badge>
                 </div>
-                <Badge variant="secondary" className="text-xs">
+                <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{product.description}</p>
+                <Badge variant="secondary" className="text-xs capitalize mb-3">
                   {product.category}
                 </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <p className="font-bold text-lg">{formatCurrency(product.price)}</p>
-                <div className="text-right">
-                  <p className="text-sm font-semibold">⭐ {product.rating}</p>
-                  <p className="text-xs text-muted-foreground">{product.reviews} reviews</p>
+                <div className="flex items-center justify-between">
+                  <p className="font-bold text-lg">{formatCurrency(product.price)}</p>
+                  <p className="text-xs text-muted-foreground">{product.quantity} in stock</p>
                 </div>
               </div>
             </Card>

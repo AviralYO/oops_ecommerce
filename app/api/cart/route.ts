@@ -38,28 +38,20 @@ export async function GET(request: NextRequest) {
     // Fetch cart items with product details
     const { data: cartItems, error: cartError } = await authenticatedSupabase
       .from("cart_items")
-      .select(`
-        *,
-        products (
-          name,
-          price,
-          image_url,
-          quantity as stock
-        )
-      `)
+      .select("*, products(*)")
       .eq("customer_id", user.id)
 
     if (cartError) {
-      console.error("[Cart] Fetch error:", cartError)
+      console.error("[Cart GET] Error:", cartError)
       return NextResponse.json(
-        { error: "Failed to fetch cart" },
+        { error: cartError.message || "Failed to fetch cart" },
         { status: 500 }
       )
     }
 
-    return NextResponse.json({ cartItems })
+    return NextResponse.json({ cartItems: cartItems || [] })
   } catch (error: any) {
-    console.error("[Cart] Error:", error)
+    console.error("[Cart GET] Exception:", error)
     return NextResponse.json(
       { error: error.message || "Internal server error" },
       { status: 500 }
@@ -68,6 +60,97 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  try {
+    const accessToken = request.cookies.get("sb-access-token")?.value
+
+    if (!accessToken) {
+      return NextResponse.json(
+        { error: "Not logged in" },
+        { status: 401 }
+      )
+    }
+
+    // Create authenticated Supabase client
+    const authenticatedSupabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      }
+    )
+
+    const body = await request.json()
+    const { product_id, quantity = 1 } = body
+
+    // Get user
+    const { data: { user }, error: userError } = await authenticatedSupabase.auth.getUser()
+
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: "Session expired" },
+        { status: 401 }
+      )
+    }
+
+    // Check if item already in cart
+    const { data: existingItem } = await authenticatedSupabase
+      .from("cart_items")
+      .select("*")
+      .eq("customer_id", user.id)
+      .eq("product_id", product_id)
+      .maybeSingle()
+
+    if (existingItem) {
+      // Update quantity
+      const { data: updatedItem, error: updateError } = await authenticatedSupabase
+        .from("cart_items")
+        .update({ quantity: existingItem.quantity + quantity })
+        .eq("id", existingItem.id)
+        .select()
+        .single()
+
+      if (updateError) {
+        return NextResponse.json(
+          { error: updateError.message },
+          { status: 500 }
+        )
+      }
+
+      return NextResponse.json({ success: true, cartItem: updatedItem })
+    } else {
+      // Add new item
+      const { data: newItem, error: insertError } = await authenticatedSupabase
+        .from("cart_items")
+        .insert({
+          customer_id: user.id,
+          product_id,
+          quantity,
+        })
+        .select()
+        .single()
+
+      if (insertError) {
+        return NextResponse.json(
+          { error: insertError.message },
+          { status: 500 }
+        )
+      }
+
+      return NextResponse.json({ success: true, cartItem: newItem })
+    }
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Server error" },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PATCH(request: NextRequest) {
   try {
     const accessToken = request.cookies.get("sb-access-token")?.value
 
@@ -92,7 +175,14 @@ export async function POST(request: NextRequest) {
     )
 
     const body = await request.json()
-    const { product_id, quantity } = body
+    const { cart_item_id, quantity } = body
+
+    if (!cart_item_id || !quantity) {
+      return NextResponse.json(
+        { error: "Cart item ID and quantity required" },
+        { status: 400 }
+      )
+    }
 
     // Get user
     const { data: { user }, error: userError } = await authenticatedSupabase.auth.getUser()
@@ -104,75 +194,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if product exists and is in stock
-    const { data: product, error: productError } = await authenticatedSupabase
-      .from("products")
-      .select("*")
-      .eq("id", product_id)
-      .single()
-
-    if (productError || !product) {
-      return NextResponse.json(
-        { error: "Product not found" },
-        { status: 404 }
-      )
-    }
-
-    if (product.quantity < quantity) {
-      return NextResponse.json(
-        { error: "Not enough stock" },
-        { status: 400 }
-      )
-    }
-
-    // Check if item already in cart
-    const { data: existingItem } = await authenticatedSupabase
+    // Update cart item quantity
+    const { data: updatedItem, error: updateError } = await authenticatedSupabase
       .from("cart_items")
-      .select("*")
+      .update({ quantity })
+      .eq("id", cart_item_id)
       .eq("customer_id", user.id)
-      .eq("product_id", product_id)
+      .select()
       .single()
 
-    if (existingItem) {
-      // Update quantity
-      const { data: updatedItem, error: updateError } = await authenticatedSupabase
-        .from("cart_items")
-        .update({ quantity: existingItem.quantity + quantity })
-        .eq("id", existingItem.id)
-        .select()
-        .single()
-
-      if (updateError) {
-        return NextResponse.json(
-          { error: "Failed to update cart" },
-          { status: 500 }
-        )
-      }
-
-      return NextResponse.json({ cartItem: updatedItem })
-    } else {
-      // Add new item
-      const { data: newItem, error: insertError } = await authenticatedSupabase
-        .from("cart_items")
-        .insert({
-          customer_id: user.id,
-          product_id,
-          quantity,
-        })
-        .select()
-        .single()
-
-      if (insertError) {
-        return NextResponse.json(
-          { error: "Failed to add to cart" },
-          { status: 500 }
-        )
-      }
-
-      return NextResponse.json({ cartItem: newItem })
+    if (updateError) {
+      console.error("[Cart] Update error:", updateError)
+      return NextResponse.json(
+        { error: "Failed to update cart" },
+        { status: 500 }
+      )
     }
+
+    return NextResponse.json({ cartItem: updatedItem })
   } catch (error: any) {
-    console.error("[Cart] Add error:", error)
+    console.error("[Cart] Error:", error)
     return NextResponse.json(
       { error: error.message || "Internal server error" },
       { status: 500 }

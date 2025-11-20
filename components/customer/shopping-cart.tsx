@@ -14,11 +14,13 @@ interface CartItem {
 
 interface ShoppingCartProps {
   items: CartItem[]
-  onRemove: (productId: string) => void
-  onUpdateQuantity: (productId: string, quantity: number) => void
+  onRemove: (cartItemId: string) => void
+  onUpdateQuantity: (cartItemId: string, quantity: number) => void
+  onCheckout: () => void
+  loading?: boolean
 }
 
-export default function ShoppingCart({ items, onRemove, onUpdateQuantity }: ShoppingCartProps) {
+export default function ShoppingCart({ items, onRemove, onUpdateQuantity, onCheckout, loading = false }: ShoppingCartProps) {
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const tax = subtotal * 0.18 // 18% GST in India
   const total = subtotal + tax
@@ -87,8 +89,12 @@ export default function ShoppingCart({ items, onRemove, onUpdateQuantity }: Shop
               <span>{formatCurrency(total)}</span>
             </div>
 
-            <Button className="w-full bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-semibold mt-4">
-              Checkout
+            <Button 
+              onClick={onCheckout}
+              disabled={loading || items.length === 0}
+              className="w-full bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-semibold mt-4 disabled:opacity-50"
+            >
+              {loading ? "Processing..." : "Checkout"}
             </Button>
           </div>
         </>

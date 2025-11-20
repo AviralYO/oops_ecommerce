@@ -21,6 +21,8 @@ interface CustomerLayoutProps {
   onCartClick: () => void
   selectedCategory: string
   onCategoryChange: (category: string) => void
+  searchTerm?: string
+  onSearchChange?: (term: string) => void
 }
 
 const categories = ["all", "electronics", "groceries", "clothing", "books", "home"]
@@ -31,10 +33,25 @@ export default function CustomerLayout({
   onCartClick,
   selectedCategory,
   onCategoryChange,
+  searchTerm = "",
+  onSearchChange,
 }: CustomerLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [localSearch, setLocalSearch] = useState(searchTerm)
   const { user, logout } = useAuth()
   const router = useRouter()
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setLocalSearch(value)
+    onSearchChange?.(value)
+  }
+
+  const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && localSearch.trim()) {
+      router.push(`/search?q=${encodeURIComponent(localSearch)}`)
+    }
+  }
 
   const handleLogout = async () => {
     await logout()
@@ -61,6 +78,9 @@ export default function CustomerLayout({
               <input
                 type="text"
                 placeholder="Search products..."
+                value={localSearch}
+                onChange={handleSearchChange}
+                onKeyPress={handleSearchKeyPress}
                 className="w-full px-4 py-2 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
