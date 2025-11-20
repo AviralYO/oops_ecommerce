@@ -100,29 +100,29 @@ export default function RetailerLayout({ children }: RetailerLayoutProps) {
         >
           <nav className="p-6 space-y-2">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase mb-4">Menu</h3>
-            <button className="w-full text-left px-4 py-2 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold transition-colors">
+            <button onClick={() => router.push("/retailer")} className="w-full text-left px-4 py-2 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold transition-colors">
               Dashboard
             </button>
-            <button className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors">
+            <button onClick={() => router.push("/retailer/orders")} className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors">
               Orders
             </button>
-            <button className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors">
+            <button onClick={() => router.push("/retailer/products")} className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors">
               Inventory
             </button>
-            <button className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors">
+            <button className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors opacity-50 cursor-not-allowed">
               Analytics
             </button>
 
             <div className="pt-8 mt-8 border-t border-border">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase mb-4">Account</h3>
               <div className="space-y-2">
-                <button className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors">
+                <button onClick={() => router.push("/retailer/settings")} className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors">
                   Settings
                 </button>
-                <button className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors">
+                <button className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors opacity-50 cursor-not-allowed">
                   Help
                 </button>
-                <button className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors">
+                <button onClick={handleLogout} className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors">
                   Logout
                 </button>
               </div>

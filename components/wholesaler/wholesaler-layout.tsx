@@ -100,32 +100,32 @@ export default function WholesalerLayout({ children }: WholesalerLayoutProps) {
         >
           <nav className="p-6 space-y-2">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase mb-4">Menu</h3>
-            <button className="w-full text-left px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-semibold transition-colors">
+            <button onClick={() => router.push("/wholesaler")} className="w-full text-left px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-semibold transition-colors">
               Dashboard
             </button>
-            <button className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors">
+            <button onClick={() => router.push("/wholesaler/orders")} className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors">
               Orders
             </button>
-            <button className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors">
+            <button onClick={() => router.push("/wholesaler/inventory")} className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors">
               Products
             </button>
-            <button className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors">
+            <button className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors opacity-50 cursor-not-allowed">
               Customers
             </button>
-            <button className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors">
+            <button className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors opacity-50 cursor-not-allowed">
               Analytics
             </button>
 
             <div className="pt-8 mt-8 border-t border-border">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase mb-4">Account</h3>
               <div className="space-y-2">
-                <button className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors">
+                <button onClick={() => router.push("/wholesaler/settings")} className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors">
                   Settings
                 </button>
-                <button className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors">
+                <button className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors opacity-50 cursor-not-allowed">
                   Help
                 </button>
-                <button className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors">
+                <button onClick={handleLogout} className="w-full text-left px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors">
                   Logout
                 </button>
               </div>
