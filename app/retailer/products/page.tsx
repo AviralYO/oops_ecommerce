@@ -32,55 +32,18 @@ export default function RetailerProducts() {
   }, [isAuthenticated, loading, router])
 
   useEffect(() => {
-    // Fetch products from API
     const fetchProducts = async () => {
       try {
         const response = await fetch("/api/products?retailer=true")
         if (response.ok) {
           const data = await response.json()
           setProducts(data)
+        } else {
+          setProducts([])
         }
       } catch (error) {
         console.error("Error fetching products:", error)
-        // Use mock data for demo
-        setProducts([
-          {
-            id: 1,
-            name: "Premium T-Shirt",
-            category: "Clothing",
-            price: 499,
-            stock: 45,
-            status: "active",
-            image: "/placeholder.jpg"
-          },
-          {
-            id: 2,
-            name: "Running Shoes",
-            category: "Footwear",
-            price: 2999,
-            stock: 12,
-            status: "active",
-            image: "/placeholder.jpg"
-          },
-          {
-            id: 3,
-            name: "Laptop Bag",
-            category: "Accessories",
-            price: 1499,
-            stock: 5,
-            status: "low_stock",
-            image: "/placeholder.jpg"
-          },
-          {
-            id: 4,
-            name: "Water Bottle",
-            category: "Lifestyle",
-            price: 299,
-            stock: 0,
-            status: "out_of_stock",
-            image: "/placeholder.jpg"
-          },
-        ])
+        setProducts([])
       }
     }
 

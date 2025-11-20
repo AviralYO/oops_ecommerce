@@ -32,47 +32,23 @@ export default function RetailerOrders() {
   }, [isAuthenticated, loading, router])
 
   useEffect(() => {
-    // Fetch orders from API
+    const fetchOrders = async () => {
+      try {
+        const response = await fetch("/api/orders?retailer=true")
+        if (response.ok) {
+          const data = await response.json()
+          setOrders(data)
+        } else {
+          setOrders([])
+        }
+      } catch (error) {
+        console.error("Error fetching orders:", error)
+        setOrders([])
+      }
+    }
+
     if (user) {
-      // Mock data for demo
-      setOrders([
-        {
-          id: 1,
-          orderId: "ORD-2024-001",
-          customer: "John Doe",
-          items: 3,
-          total: 4500,
-          status: "pending",
-          date: "2024-01-15"
-        },
-        {
-          id: 2,
-          orderId: "ORD-2024-002",
-          customer: "Jane Smith",
-          items: 2,
-          total: 2800,
-          status: "confirmed",
-          date: "2024-01-14"
-        },
-        {
-          id: 3,
-          orderId: "ORD-2024-003",
-          customer: "Bob Johnson",
-          items: 5,
-          total: 7200,
-          status: "shipped",
-          date: "2024-01-13"
-        },
-        {
-          id: 4,
-          orderId: "ORD-2024-004",
-          customer: "Alice Williams",
-          items: 1,
-          total: 1500,
-          status: "delivered",
-          date: "2024-01-12"
-        },
-      ])
+      fetchOrders()
     }
   }, [user])
 

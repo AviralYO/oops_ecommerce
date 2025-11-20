@@ -33,51 +33,23 @@ export default function WholesalerInventory() {
   }, [isAuthenticated, loading, router])
 
   useEffect(() => {
-    // Fetch inventory from API
+    const fetchInventory = async () => {
+      try {
+        const response = await fetch("/api/products?wholesaler=true&inventory=true")
+        if (response.ok) {
+          const data = await response.json()
+          setInventory(data)
+        } else {
+          setInventory([])
+        }
+      } catch (error) {
+        console.error("Error fetching inventory:", error)
+        setInventory([])
+      }
+    }
+
     if (user) {
-      // Mock data for demo
-      setInventory([
-        {
-          id: 1,
-          name: "Premium Cotton T-Shirts",
-          category: "Clothing",
-          stock: 500,
-          reorderLevel: 100,
-          wholesalePrice: 250,
-          retailPrice: 499,
-          status: "in_stock"
-        },
-        {
-          id: 2,
-          name: "Sports Running Shoes",
-          category: "Footwear",
-          stock: 85,
-          reorderLevel: 100,
-          wholesalePrice: 1800,
-          retailPrice: 2999,
-          status: "low_stock"
-        },
-        {
-          id: 3,
-          name: "Leather Laptop Bags",
-          category: "Accessories",
-          stock: 250,
-          reorderLevel: 50,
-          wholesalePrice: 900,
-          retailPrice: 1499,
-          status: "in_stock"
-        },
-        {
-          id: 4,
-          name: "Stainless Steel Water Bottles",
-          category: "Lifestyle",
-          stock: 15,
-          reorderLevel: 50,
-          wholesalePrice: 180,
-          retailPrice: 299,
-          status: "critical"
-        },
-      ])
+      fetchInventory()
     }
   }, [user])
 

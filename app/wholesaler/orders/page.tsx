@@ -34,50 +34,23 @@ export default function WholesalerOrders() {
   }, [isAuthenticated, loading, router])
 
   useEffect(() => {
-    // Fetch orders from API
+    const fetchOrders = async () => {
+      try {
+        const response = await fetch("/api/orders?wholesaler=true")
+        if (response.ok) {
+          const data = await response.json()
+          setOrders(data)
+        } else {
+          setOrders([])
+        }
+      } catch (error) {
+        console.error("Error fetching orders:", error)
+        setOrders([])
+      }
+    }
+
     if (user) {
-      // Mock data for demo
-      setOrders([
-        {
-          id: 1,
-          orderId: "WHL-2024-001",
-          retailer: "Fashion Store Mumbai",
-          items: 15,
-          total: 45000,
-          status: "pending",
-          date: "2024-01-15"
-        },
-        {
-          id: 2,
-          orderId: "WHL-2024-002",
-          retailer: "Footwear Hub Delhi",
-          items: 8,
-          total: 28000,
-          status: "confirmed",
-          date: "2024-01-14",
-          deliveryDate: "2024-01-18"
-        },
-        {
-          id: 3,
-          orderId: "WHL-2024-003",
-          retailer: "Sports World Bangalore",
-          items: 25,
-          total: 72000,
-          status: "shipped",
-          date: "2024-01-13",
-          deliveryDate: "2024-01-17"
-        },
-        {
-          id: 4,
-          orderId: "WHL-2024-004",
-          retailer: "Lifestyle Outlet Pune",
-          items: 12,
-          total: 35000,
-          status: "delivered",
-          date: "2024-01-12",
-          deliveryDate: "2024-01-15"
-        },
-      ])
+      fetchOrders()
     }
   }, [user])
 
