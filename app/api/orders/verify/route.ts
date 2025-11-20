@@ -57,10 +57,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Generate order number
+    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+
     // Create order in database
     const { data: order, error: orderError } = await authenticatedSupabase
       .from("orders")
       .insert({
+        order_number: orderNumber,
         customer_id: user.id,
         total_amount: orderDetails.total_amount,
         shipping_address: orderDetails.shipping_address,
@@ -96,6 +100,27 @@ export async function POST(request: NextRequest) {
       // Order created but items failed - still return success
     }
 
+    // Update product stock quantities
+    for (const item of orderDetails.items) {
+      const { data: product } = await authenticatedSupabase
+        .from("products")
+        .select("quantity")
+        .eq("id", item.product_id)
+        .single()
+
+      if (product) {
+        const newQuantity = Math.max(0, product.quantity - item.quantity)
+        
+        await authenticatedSupabase
+          .from("products")
+          .update({
+            quantity: newQuantity,
+            status: newQuantity === 0 ? "out-of-stock" : newQuantity < 10 ? "low-stock" : "in-stock",
+          })
+          .eq("id", item.product_id)
+      }
+    }
+
     // Clear cart items
     const { error: clearCartError } = await authenticatedSupabase
       .from("cart_items")
@@ -105,6 +130,9 @@ export async function POST(request: NextRequest) {
     if (clearCartError) {
       console.error("[Order Verify] Clear cart error:", clearCartError)
     }
+
+    // TODO: Send order confirmation email/SMS
+    // await sendOrderConfirmationNotification(order, user)
 
     return NextResponse.json({
       success: true,

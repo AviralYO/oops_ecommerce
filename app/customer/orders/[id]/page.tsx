@@ -2,198 +2,253 @@
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
+import { useAuth } from "@/lib/auth-context"
+import CustomerLayout from "@/components/customer/customer-layout"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle2 } from "lucide-react"
+import { Separator } from "@/components/ui/separator"
 
 interface OrderItem {
-  id: string
+  id: number
+  product_id: number
   quantity: number
-  price_at_purchase: number
+  price: number
   products: {
     name: string
     image_url: string
+    description: string
   }
 }
 
 interface Order {
-  id: string
-  total_amount: number
-  shipping_address: string
+  id: number
+  order_number: string
   status: string
-  payment_status: string
-  payment_id: string
+  total_amount: number
   created_at: string
+  tracking_number?: string
+  delivery_date?: string
+  shipping_address: string
   order_items: OrderItem[]
 }
 
-export default function OrderConfirmationPage() {
-  const [order, setOrder] = useState<Order | null>(null)
-  const [loading, setLoading] = useState(true)
+export default function OrderDetailsPage() {
+  const { user, isAuthenticated, loading } = useAuth()
   const params = useParams()
   const router = useRouter()
+  const [order, setOrder] = useState<Order | null>(null)
+  const [loadingOrder, setLoadingOrder] = useState(true)
 
   useEffect(() => {
-    fetchOrder()
-  }, [params.id])
+    if (!loading && !isAuthenticated) {
+      router.push("/")
+    }
+  }, [isAuthenticated, loading, router])
 
-  const fetchOrder = async () => {
+  useEffect(() => {
+    if (user && params.id) {
+      fetchOrderDetails()
+    }
+  }, [user, params.id])
+
+  const fetchOrderDetails = async () => {
     try {
-      const response = await fetch("/api/orders")
-      const data = await response.json()
-      
-      if (data.orders) {
-        const foundOrder = data.orders.find((o: Order) => o.id === params.id)
-        if (foundOrder) {
-          setOrder(foundOrder)
-        }
+      const response = await fetch(`/api/orders/${params.id}`)
+      if (response.ok) {
+        const data = await response.json()
+        setOrder(data.order)
       }
     } catch (error) {
-      console.error("Error fetching order:", error)
+      console.error("Failed to fetch order details:", error)
     } finally {
-      setLoading(false)
+      setLoadingOrder(false)
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading order details...</p>
-        </div>
-      </div>
-    )
+  if (loading || loadingOrder) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>
   }
 
-  if (!order) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="max-w-md">
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground mb-4">Order not found</p>
-            <Button onClick={() => router.push("/customer")}>
-              Continue Shopping
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
+  if (!user || user.role !== "customer" || !order) {
+    return null
   }
 
-  const shippingAddress = JSON.parse(order.shipping_address)
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "pending":
+        return "bg-yellow-500"
+      case "confirmed":
+        return "bg-blue-500"
+      case "shipped":
+        return "bg-purple-500"
+      case "delivered":
+        return "bg-green-500"
+      case "cancelled":
+        return "bg-red-500"
+      default:
+        return "bg-gray-500"
+    }
+  }
+
+  const getStatusSteps = () => {
+    const steps = [
+      { name: "Order Placed", status: "pending" },
+      { name: "Confirmed", status: "confirmed" },
+      { name: "Shipped", status: "shipped" },
+      { name: "Delivered", status: "delivered" },
+    ]
+
+    const currentIndex = steps.findIndex(s => s.status === order.status.toLowerCase())
+    return steps.map((step, index) => ({
+      ...step,
+      completed: index <= currentIndex,
+    }))
+  }
 
   return (
-    <div className="min-h-screen bg-background py-8">
-      <div className="container max-w-3xl">
-        <Card className="mb-6">
-          <CardContent className="py-12 text-center">
-            <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h1 className="text-3xl font-bold mb-2">Order Confirmed!</h1>
-            <p className="text-muted-foreground mb-4">
-              Thank you for your purchase. Your order has been placed successfully.
-            </p>
-            <div className="flex items-center justify-center gap-4 text-sm">
-              <div>
-                <span className="text-muted-foreground">Order ID: </span>
-                <span className="font-mono">{order.id}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Payment ID: </span>
-                <span className="font-mono">{order.payment_id}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid gap-6 md:grid-cols-2 mb-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Order Status</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Order Status</span>
-                <Badge variant="default">{order.status}</Badge>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Payment Status</span>
-                <Badge variant="default" className="bg-green-500">
-                  {order.payment_status}
-                </Badge>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Order Date</span>
-                <span>{new Date(order.created_at).toLocaleDateString()}</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Shipping Address</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1 text-sm">
-                <p className="font-semibold">{shippingAddress.name}</p>
-                <p className="text-muted-foreground">{shippingAddress.email}</p>
-                <p className="text-muted-foreground">{shippingAddress.phone}</p>
-                <p className="text-muted-foreground mt-2">{shippingAddress.address}</p>
-              </div>
-            </CardContent>
-          </Card>
+    <CustomerLayout>
+      <div className="space-y-6 max-w-4xl mx-auto">
+        <div className="flex items-center justify-between">
+          <div>
+            <Button variant="ghost" onClick={() => router.push("/customer/orders")}>
+              ← Back to Orders
+            </Button>
+            <h1 className="text-3xl font-bold mt-2">Order Details</h1>
+            <p className="text-muted-foreground">Order #{order.order_number}</p>
+          </div>
+          <Badge className={`${getStatusColor(order.status)} text-white text-lg px-4 py-2`}>
+            {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+          </Badge>
         </div>
 
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Order Items</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {order.order_items.map((item) => (
-                <div key={item.id} className="flex items-center gap-4 pb-4 border-b last:border-b-0">
-                  {item.products.image_url && (
-                    <img
-                      src={item.products.image_url}
-                      alt={item.products.name}
-                      className="w-16 h-16 object-cover rounded"
-                    />
-                  )}
+        {/* Order Tracking Timeline */}
+        <Card className="bg-card border-border p-6">
+          <h2 className="text-xl font-semibold mb-6">Order Tracking</h2>
+          <div className="flex items-center justify-between relative">
+            {getStatusSteps().map((step, index) => (
+              <div key={index} className="flex flex-col items-center relative z-10 flex-1">
+                <div
+                  className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                    step.completed ? "bg-green-500 text-white" : "bg-gray-300 text-gray-600"
+                  }`}
+                >
+                  {step.completed ? "✓" : index + 1}
+                </div>
+                <p className="text-sm mt-2 text-center">{step.name}</p>
+              </div>
+            ))}
+            <div className="absolute top-6 left-0 right-0 h-0.5 bg-gray-300 -z-0" />
+          </div>
+
+          {order.tracking_number && (
+            <div className="mt-6 p-4 bg-muted rounded-lg">
+              <p className="text-sm text-muted-foreground">Tracking Number</p>
+              <p className="font-semibold text-lg">{order.tracking_number}</p>
+            </div>
+          )}
+
+          {order.delivery_date && (
+            <div className="mt-4 p-4 bg-muted rounded-lg">
+              <p className="text-sm text-muted-foreground">Expected Delivery</p>
+              <p className="font-semibold text-lg">
+                {new Date(order.delivery_date).toLocaleDateString("en-IN", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </p>
+            </div>
+          )}
+        </Card>
+
+        {/* Order Items */}
+        <Card className="bg-card border-border p-6">
+          <h2 className="text-xl font-semibold mb-4">Order Items</h2>
+          <div className="space-y-4">
+            {order.order_items.map((item) => (
+              <div key={item.id}>
+                <div className="flex items-center gap-4">
+                  <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center text-white font-bold text-2xl">
+                    {item.products.name.charAt(0)}
+                  </div>
                   <div className="flex-1">
                     <h3 className="font-semibold">{item.products.name}</h3>
                     <p className="text-sm text-muted-foreground">
-                      Quantity: {item.quantity}
+                      Quantity: {item.quantity} × ₹{item.price.toLocaleString()}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold">₹{item.price_at_purchase.toFixed(2)}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Total: ₹{(item.price_at_purchase * item.quantity).toFixed(2)}
+                    <p className="font-semibold text-lg">
+                      ₹{(item.quantity * item.price).toLocaleString()}
                     </p>
+                    {order.status.toLowerCase() === "delivered" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="mt-2"
+                        onClick={() => router.push(`/product/${item.product_id}?review=true`)}
+                      >
+                        Write Review
+                      </Button>
+                    )}
                   </div>
                 </div>
-              ))}
-            </div>
-
-            <div className="mt-6 pt-6 border-t space-y-2">
-              <div className="flex justify-between font-bold text-lg">
-                <span>Total Amount</span>
-                <span>₹{order.total_amount.toFixed(2)}</span>
+                <Separator className="mt-4" />
               </div>
+            ))}
+          </div>
+
+          <div className="mt-6 space-y-2">
+            <div className="flex justify-between text-muted-foreground">
+              <span>Subtotal</span>
+              <span>₹{order.total_amount.toLocaleString()}</span>
             </div>
-          </CardContent>
+            <div className="flex justify-between text-muted-foreground">
+              <span>Shipping</span>
+              <span>Free</span>
+            </div>
+            <Separator />
+            <div className="flex justify-between text-xl font-bold">
+              <span>Total</span>
+              <span>₹{order.total_amount.toLocaleString()}</span>
+            </div>
+          </div>
+        </Card>
+
+        {/* Delivery Address */}
+        <Card className="bg-card border-border p-6">
+          <h2 className="text-xl font-semibold mb-4">Delivery Address</h2>
+          <p className="whitespace-pre-line">{order.shipping_address}</p>
+        </Card>
+
+        {/* Order Info */}
+        <Card className="bg-card border-border p-6">
+          <h2 className="text-xl font-semibold mb-4">Order Information</h2>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Order Date</span>
+              <span className="font-medium">
+                {new Date(order.created_at).toLocaleDateString("en-IN")}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Payment Method</span>
+              <span className="font-medium">Razorpay</span>
+            </div>
+          </div>
         </Card>
 
         <div className="flex gap-4">
           <Button onClick={() => router.push("/customer")} className="flex-1">
             Continue Shopping
           </Button>
-          <Button onClick={() => router.push("/customer/profile")} variant="outline" className="flex-1">
+          <Button onClick={() => router.push("/customer/orders")} variant="outline" className="flex-1">
             View All Orders
           </Button>
         </div>
       </div>
-    </div>
+    </CustomerLayout>
   )
 }

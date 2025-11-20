@@ -36,12 +36,15 @@ CREATE TABLE IF NOT EXISTS cart_items (
 -- Create orders table
 CREATE TABLE IF NOT EXISTS orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_number TEXT UNIQUE NOT NULL,
   customer_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   total_amount DECIMAL(10,2) NOT NULL CHECK (total_amount >= 0),
   gst_amount DECIMAL(10,2) NOT NULL DEFAULT 0 CHECK (gst_amount >= 0),
   shipping_amount DECIMAL(10,2) NOT NULL DEFAULT 0 CHECK (shipping_amount >= 0),
-  status TEXT NOT NULL CHECK (status IN ('pending', 'processing', 'shipped', 'delivered', 'cancelled')) DEFAULT 'pending',
-  shipping_address JSONB,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'confirmed', 'shipped', 'delivered', 'cancelled')) DEFAULT 'pending',
+  shipping_address TEXT NOT NULL,
+  tracking_number TEXT,
+  delivery_date TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -141,3 +144,34 @@ CREATE POLICY "Users can update own images" ON storage.objects FOR UPDATE USING 
 CREATE POLICY "Users can delete own images" ON storage.objects FOR DELETE USING (
   bucket_id = 'product-images' AND auth.uid()::text = (storage.foldername(name))[1]
 );
+
+-- Create product_reviews table
+CREATE TABLE IF NOT EXISTS product_reviews (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  comment TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id, product_id, order_id)
+);
+
+-- Enable RLS for product_reviews
+ALTER TABLE product_reviews ENABLE ROW LEVEL SECURITY;
+
+-- Product reviews policies
+CREATE POLICY "Anyone can view reviews" ON product_reviews FOR SELECT USING (true);
+CREATE POLICY "Users can create reviews for own purchases" ON product_reviews FOR INSERT WITH CHECK (
+  user_id = auth.uid() AND
+  EXISTS (
+    SELECT 1 FROM order_items oi
+    JOIN orders o ON o.id = oi.order_id
+    WHERE oi.product_id = product_reviews.product_id
+    AND o.customer_id = auth.uid()
+    AND o.id = product_reviews.order_id
+  )
+);
+CREATE POLICY "Users can update own reviews" ON product_reviews FOR UPDATE USING (user_id = auth.uid());
+CREATE POLICY "Users can delete own reviews" ON product_reviews FOR DELETE USING (user_id = auth.uid());
