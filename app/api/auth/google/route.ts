@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     )
 
     // Get the origin for redirect
-    const origin = request.headers.get("origin") || "http://localhost:3000"
+    const origin = request.headers.get("origin") || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
     const redirectTo = `${origin}/auth/callback?role=${role || "customer"}`
 
     // Initiate Google OAuth flow
