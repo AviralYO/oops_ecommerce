@@ -9,7 +9,11 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import LoginModal from "@/components/login-modal"
 import { useTheme } from "next-themes"
-import { Moon, Sun, Search, ShoppingCart, User } from "lucide-react"
+import {
+  Moon, Sun, Search, ShoppingCart, User,
+  Truck, Shield, Headphones, Star,
+  ChevronRight, Heart, Eye
+} from "lucide-react"
 
 interface Product {
   id: string
@@ -19,6 +23,8 @@ interface Product {
   image_url: string
   category: string
   quantity: number
+  rating?: number
+  reviews?: number
 }
 
 export default function Home() {
@@ -54,6 +60,7 @@ export default function Home() {
   }
 
   const categories = ["all", ...new Set(products.map(p => p.category))]
+  const featuredProducts = products.slice(0, 6)
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
