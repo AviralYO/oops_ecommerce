@@ -18,6 +18,7 @@ export default function CustomerDashboard() {
   const [showCart, setShowCart] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [searchTerm, setSearchTerm] = useState("")
+  const [sortBy, setSortBy] = useState("featured")
   const [loadingCart, setLoadingCart] = useState(false)
 
   useEffect(() => {
@@ -168,10 +169,12 @@ export default function CustomerDashboard() {
       onCategoryChange={setSelectedCategory}
       searchTerm={searchTerm}
       onSearchChange={setSearchTerm}
+      sortBy={sortBy}
+      onSortChange={setSortBy}
     >
       <div className="flex gap-6">
         <div className="flex-1">
-          <ProductGrid onAddToCart={addToCart} selectedCategory={selectedCategory} searchTerm={searchTerm} />
+          <ProductGrid onAddToCart={addToCart} selectedCategory={selectedCategory} searchTerm={searchTerm} sortBy={sortBy} />
         </div>
         {showCart && (
           <div className="w-96">

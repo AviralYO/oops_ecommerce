@@ -21,9 +21,10 @@ interface ProductGridProps {
   onAddToCart: (product: { id: string; name: string; price: number; image: string }) => void
   selectedCategory: string
   searchTerm?: string
+  sortBy?: string
 }
 
-export default function ProductGrid({ onAddToCart, selectedCategory, searchTerm = "" }: ProductGridProps) {
+export default function ProductGrid({ onAddToCart, selectedCategory, searchTerm = "", sortBy = "featured" }: ProductGridProps) {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -57,6 +58,23 @@ export default function ProductGrid({ onAddToCart, selectedCategory, searchTerm 
     return matchesCategory && matchesSearch
   })
 
+  // Apply sorting
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    switch (sortBy) {
+      case "price-asc":
+        return a.price - b.price
+      case "price-desc":
+        return b.price - a.price
+      case "name-asc":
+        return a.name.localeCompare(b.name)
+      case "name-desc":
+        return b.name.localeCompare(a.name)
+      case "featured":
+      default:
+        return 0
+    }
+  })
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -72,13 +90,13 @@ export default function ProductGrid({ onAddToCart, selectedCategory, searchTerm 
         <p className="text-muted-foreground">Browse and shop from local retailers</p>
       </div>
 
-      {filteredProducts.length === 0 ? (
+      {sortedProducts.length === 0 ? (
         <Card className="bg-card/50 border-border p-12 text-center">
           <p className="text-muted-foreground text-lg">No products found in this category</p>
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProducts.map((product) => (
+          {sortedProducts.map((product) => (
             <Card
               key={product.id}
               className="bg-card border-border overflow-hidden hover:border-primary/50 transition-all hover:shadow-lg"
