@@ -32,9 +32,15 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
+  const [mounted, setMounted] = useState(false)
   const { user, isAuthenticated, loading } = useAuth()
   const router = useRouter()
   const { theme, setTheme } = useTheme()
+
+  // Ensure hydration is complete before rendering theme-dependent elements
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Redirect authenticated users to their dashboard
   useEffect(() => {
