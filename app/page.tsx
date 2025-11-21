@@ -175,18 +175,12 @@ export default function Home() {
               <p className="text-lg md:text-xl text-white/90 mb-8 leading-relaxed">
                 Discover amazing products from trusted retailers and wholesalers near you. Fast delivery, great prices, authentic products.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div>
                 <Button
                   onClick={() => setShowLogin(true)}
                   className="bg-white hover:bg-gray-100 text-orange-600 font-semibold text-base px-8 py-3 h-auto rounded-lg transition-all hover:shadow-lg"
                 >
                   Start Shopping
-                </Button>
-                <Button
-                  variant="outline"
-                  className="border-2 border-white text-white hover:bg-white/10 font-semibold text-base px-8 py-3 h-auto rounded-lg"
-                >
-                  Learn More
                 </Button>
               </div>
             </div>
