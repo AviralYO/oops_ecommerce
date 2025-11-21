@@ -108,12 +108,12 @@ export default function Home() {
 
             <div className="hidden md:flex flex-1 max-w-2xl mx-8">
               <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5 pointer-events-none" />
                 <Input
                   placeholder="Search for products..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 w-full bg-muted/50 border-border focus:border-orange-500 focus:ring-orange-500"
+                  className="pl-11 pr-4 w-full bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 rounded-full focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none shadow-sm"
                 />
               </div>
             </div>
