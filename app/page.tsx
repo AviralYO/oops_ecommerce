@@ -130,8 +130,9 @@ export default function Home() {
                 size="icon"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 className="hover:bg-muted"
+                suppressHydrationWarning
               >
-                {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                {mounted ? (theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />) : <Moon className="h-5 w-5" />}
               </Button>
 
               <Button variant="ghost" size="icon" onClick={handleCartClick} className="hover:bg-muted relative">
