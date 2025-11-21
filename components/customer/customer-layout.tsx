@@ -167,7 +167,7 @@ export default function CustomerLayout({
                 {/* Category Pills */}
                 <div className="h-8 w-px bg-border mx-2"></div>
                 <div className="flex gap-2">
-                  {categories.map((category) => (
+                  {Array.isArray(categories) && categories.map((category) => (
                     <Button
                       key={category}
                       variant={selectedCategory === category ? "default" : "ghost"}

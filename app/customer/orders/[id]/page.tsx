@@ -107,7 +107,12 @@ export default function OrderDetailsPage() {
   }
 
   return (
-    <CustomerLayout>
+    <CustomerLayout
+      cartCount={0}
+      onCartClick={() => router.push("/customer")}
+      selectedCategory="all"
+      onCategoryChange={() => {}}
+    >
       <div className="space-y-6 max-w-4xl mx-auto">
         <div className="flex items-center justify-between">
           <div>
