@@ -9,7 +9,11 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import LoginModal from "@/components/login-modal"
 import { useTheme } from "next-themes"
-import { Moon, Sun, Search, ShoppingCart, User } from "lucide-react"
+import {
+  Moon, Sun, Search, ShoppingCart, User,
+  Truck, Shield, Headphones, Star,
+  ChevronRight, Heart, Eye
+} from "lucide-react"
 
 interface Product {
   id: string
@@ -19,6 +23,8 @@ interface Product {
   image_url: string
   category: string
   quantity: number
+  rating?: number
+  reviews?: number
 }
 
 export default function Home() {
@@ -26,9 +32,15 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
+  const [mounted, setMounted] = useState(false)
   const { user, isAuthenticated, loading } = useAuth()
   const router = useRouter()
   const { theme, setTheme } = useTheme()
+
+  // Ensure hydration is complete before rendering theme-dependent elements
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Redirect authenticated users to their dashboard
   useEffect(() => {
@@ -54,6 +66,7 @@ export default function Home() {
   }
 
   const categories = ["all", ...new Set(products.map(p => p.category))]
+  const featuredProducts = products.slice(0, 6)
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -92,45 +105,47 @@ export default function Home() {
       <nav className="sticky top-0 w-full bg-background/95 backdrop-blur-md border-b border-border z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.push("/")}>
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white font-bold">
+            <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => router.push("/")}>
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white font-bold text-lg">
                 L
               </div>
-              <span className="text-2xl font-bold">LiveMART</span>
+              <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">LiveMART</span>
             </div>
 
             <div className="hidden md:flex flex-1 max-w-2xl mx-8">
               <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5 pointer-events-none" />
                 <Input
                   placeholder="Search for products..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 w-full"
+                  className="pl-11 pr-4 w-full bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 rounded-full focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none shadow-sm"
                 />
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="hover:bg-muted"
+                suppressHydrationWarning
               >
-                {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                {mounted ? (theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />) : <Moon className="h-5 w-5" />}
               </Button>
 
-              <Button variant="ghost" size="icon" onClick={handleCartClick}>
+              <Button variant="ghost" size="icon" onClick={handleCartClick} className="hover:bg-muted relative">
                 <ShoppingCart className="h-5 w-5" />
               </Button>
 
               {isAuthenticated && user ? (
-                <Button variant="ghost" onClick={handleProfileClick} className="gap-2">
+                <Button variant="ghost" onClick={handleProfileClick} className="gap-2 hover:bg-muted">
                   <User className="h-5 w-5" />
-                  <span className="hidden sm:inline">{user.name}</span>
+                  <span className="hidden sm:inline text-sm">{user.name}</span>
                 </Button>
               ) : (
-                <Button onClick={() => setShowLogin(true)} className="bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white">
+                <Button onClick={() => setShowLogin(true)} className="bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-semibold ml-2">
                   Sign In
                 </Button>
               )}
@@ -140,12 +155,12 @@ export default function Home() {
           {/* Mobile Search */}
           <div className="md:hidden pb-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5 pointer-events-none" />
               <Input
                 placeholder="Search for products..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 w-full"
+                className="pl-11 pr-4 w-full bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 rounded-full focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none shadow-sm"
               />
             </div>
           </div>
@@ -153,25 +168,96 @@ export default function Home() {
       </nav>
 
       {/* Hero Banner */}
-      <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 text-white py-12 px-4">
-        <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-4xl md:text-6xl font-bold mb-4">Welcome to LiveMART</h1>
-          <p className="text-xl md:text-2xl opacity-90">
-            Discover amazing products from local retailers
-          </p>
+      <div className="relative overflow-hidden bg-gradient-to-br from-orange-500 via-amber-500 to-orange-600">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full filter blur-3xl"></div>
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-white rounded-full filter blur-3xl"></div>
+        </div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
+          <div className="grid md:grid-cols-2 gap-8 items-center">
+            <div>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight">
+                Shop Smart<br />from Local Retailers
+              </h1>
+              <p className="text-lg md:text-xl text-white/90 mb-8 leading-relaxed">
+                Discover amazing products from trusted retailers and wholesalers near you. Fast delivery, great prices, authentic products.
+              </p>
+              <div>
+                <Button
+                  onClick={() => setShowLogin(true)}
+                  className="bg-white hover:bg-gray-100 text-orange-600 font-semibold text-base px-8 py-3 h-auto rounded-lg transition-all hover:shadow-lg"
+                >
+                  Start Shopping
+                </Button>
+              </div>
+            </div>
+            <div className="hidden md:grid grid-cols-2 gap-4">
+              <div className="space-y-4">
+                <div className="bg-white/15 backdrop-blur-sm rounded-xl p-6 text-white border border-white/20">
+                  <Truck className="h-8 w-8 mb-3" />
+                  <p className="font-semibold">Fast Delivery</p>
+                  <p className="text-sm text-white/80">Quick shipping to your location</p>
+                </div>
+                <div className="bg-white/15 backdrop-blur-sm rounded-xl p-6 text-white border border-white/20">
+                  <Shield className="h-8 w-8 mb-3" />
+                  <p className="font-semibold">Secure Payments</p>
+                  <p className="text-sm text-white/80">Safe and verified transactions</p>
+                </div>
+              </div>
+              <div className="space-y-4 pt-8">
+                <div className="bg-white/15 backdrop-blur-sm rounded-xl p-6 text-white border border-white/20">
+                  <Star className="h-8 w-8 mb-3" />
+                  <p className="font-semibold">Quality Products</p>
+                  <p className="text-sm text-white/80">Trusted verified sellers</p>
+                </div>
+                <div className="bg-white/15 backdrop-blur-sm rounded-xl p-6 text-white border border-white/20">
+                  <Headphones className="h-8 w-8 mb-3" />
+                  <p className="font-semibold">24/7 Support</p>
+                  <p className="text-sm text-white/80">Always here to help</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Features Bar */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 -mt-4 relative z-10">
+        <div className="bg-white dark:bg-card shadow-md rounded-xl p-6 text-center border border-border">
+          <Truck className="h-6 w-6 text-orange-500 mx-auto mb-2" />
+          <p className="text-sm font-semibold">Free Shipping</p>
+          <p className="text-xs text-muted-foreground">On orders over ₹500</p>
+        </div>
+        <div className="bg-white dark:bg-card shadow-md rounded-xl p-6 text-center border border-border">
+          <Shield className="h-6 w-6 text-orange-500 mx-auto mb-2" />
+          <p className="text-sm font-semibold">100% Secure</p>
+          <p className="text-xs text-muted-foreground">Safe checkout</p>
+        </div>
+        <div className="bg-white dark:bg-card shadow-md rounded-xl p-6 text-center border border-border">
+          <RotatedReturn className="h-6 w-6 text-orange-500 mx-auto mb-2" />
+          <p className="text-sm font-semibold">Easy Returns</p>
+          <p className="text-xs text-muted-foreground">Within 7 days</p>
+        </div>
+        <div className="bg-white dark:bg-card shadow-md rounded-xl p-6 text-center border border-border">
+          <Headphones className="h-6 w-6 text-orange-500 mx-auto mb-2" />
+          <p className="text-sm font-semibold">24/7 Support</p>
+          <p className="text-xs text-muted-foreground">Dedicated help</p>
         </div>
       </div>
 
       {/* Category Filter */}
       <div className="border-b border-border bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="mb-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Shop by Category</h3>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
             {categories.map((category) => (
               <Button
                 key={category}
                 variant={selectedCategory === category ? "default" : "outline"}
                 onClick={() => setSelectedCategory(category)}
-                className={selectedCategory === category ? "bg-orange-500 hover:bg-orange-600 text-white" : ""}
+                className={selectedCategory === category ? "bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white border-0 font-semibold whitespace-nowrap" : "whitespace-nowrap"}
               >
                 {category.charAt(0).toUpperCase() + category.slice(1)}
               </Button>
@@ -180,168 +266,213 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Featured Products Section */}
+      {featuredProducts.length > 0 && selectedCategory === "all" && filteredProducts.length > 0 && (
+        <section className="py-12 px-4 sm:px-6 lg:px-8 bg-muted/30">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-3xl font-bold">Featured Products</h2>
+                <p className="text-muted-foreground mt-2">Handpicked collections just for you</p>
+              </div>
+              <Button variant="ghost" className="gap-2 text-orange-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950">
+                View All <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {featuredProducts.slice(0, 6).map((product) => (
+                <div
+                  key={product.id}
+                  className="group cursor-pointer"
+                  onClick={() => handleProductClick(product.id)}
+                >
+                  <Card className="overflow-hidden border-border hover:shadow-xl transition-all duration-300 h-full flex flex-col">
+                    <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 relative overflow-hidden">
+                      {product.image_url ? (
+                        <img
+                          src={product.image_url}
+                          alt={product.name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-6xl font-bold text-white">
+                          {product.name.charAt(0)}
+                        </div>
+                      )}
+                      <div className="absolute top-0 inset-x-0 bg-gradient-to-b from-black/20 to-transparent p-3 flex justify-between items-start">
+                        {product.quantity < 5 && product.quantity > 0 && (
+                          <Badge className="bg-red-500/90 text-white">Limited</Badge>
+                        )}
+                        {product.quantity === 0 && (
+                          <Badge className="bg-gray-600/90 text-white">Out of Stock</Badge>
+                        )}
+                        <button className="p-2 rounded-full bg-white/20 hover:bg-white/40 text-white transition-colors">
+                          <Heart className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="p-4 flex-1 flex flex-col">
+                      <h3 className="font-semibold text-base mb-1 line-clamp-2 group-hover:text-orange-500 transition-colors">
+                        {product.name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mb-3 line-clamp-1">
+                        {product.category}
+                      </p>
+                      <div className="flex items-center gap-1 mb-3">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`h-3 w-3 ${i < 4 ? "fill-amber-400 text-amber-400" : "text-gray-300"}`}
+                          />
+                        ))}
+                        <span className="text-xs text-muted-foreground ml-1">(28)</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-4 line-clamp-2">
+                        {product.description}
+                      </p>
+                      <div className="mt-auto flex items-center justify-between pt-2 border-t border-border">
+                        <span className="text-lg font-bold text-orange-600">
+                          ₹{product.price.toLocaleString()}
+                        </span>
+                        <Button
+                          size="sm"
+                          className="bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleProductClick(product.id)
+                          }}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Products Grid */}
-      <section className="py-8 px-4 sm:px-6 lg:px-8">
+      <section className="py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">
-              {selectedCategory === "all" ? "All Products" : selectedCategory}
-            </h2>
-            <p className="text-muted-foreground">
-              {filteredProducts.length} {filteredProducts.length === 1 ? "product" : "products"}
-            </p>
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-3xl font-bold">
+                {selectedCategory === "all" ? "All Products" : selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}
+              </h2>
+              <p className="text-muted-foreground mt-2">
+                {filteredProducts.length} {filteredProducts.length === 1 ? "product" : "products"} available
+              </p>
+            </div>
           </div>
 
           {filteredProducts.length === 0 ? (
-            <div className="text-center py-16">
+            <div className="text-center py-20">
               <div className="text-6xl mb-4">🔍</div>
-              <h3 className="text-xl font-semibold mb-2">No products found</h3>
-              <p className="text-muted-foreground">Try adjusting your search or filters</p>
+              <h3 className="text-2xl font-semibold mb-2">No products found</h3>
+              <p className="text-muted-foreground">Try adjusting your search or filter criteria</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredProducts.map((product) => (
-                <Card
+                <div
                   key={product.id}
-                  className="group cursor-pointer hover:shadow-xl transition-all duration-300 overflow-hidden border-border"
+                  className="group cursor-pointer"
                   onClick={() => handleProductClick(product.id)}
                 >
-                  <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 relative overflow-hidden">
-                    {product.image_url ? (
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-6xl font-bold text-white">
-                        {product.name.charAt(0)}
+                  <Card className="overflow-hidden border-border hover:shadow-xl transition-all duration-300 h-full flex flex-col">
+                    <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 relative overflow-hidden">
+                      {product.image_url ? (
+                        <img
+                          src={product.image_url}
+                          alt={product.name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-6xl font-bold text-white">
+                          {product.name.charAt(0)}
+                        </div>
+                      )}
+                      <div className="absolute top-0 inset-x-0 bg-gradient-to-b from-black/20 to-transparent p-3 flex justify-between items-start">
+                        {product.quantity < 5 && product.quantity > 0 && (
+                          <Badge className="bg-red-500/90 text-white">Limited</Badge>
+                        )}
+                        {product.quantity === 0 && (
+                          <Badge className="bg-gray-600/90 text-white">Out of Stock</Badge>
+                        )}
+                        <button className="p-2 rounded-full bg-white/20 hover:bg-white/40 text-white transition-colors">
+                          <Heart className="h-5 w-5" />
+                        </button>
                       </div>
-                    )}
-                    {product.quantity < 10 && product.quantity > 0 && (
-                      <Badge className="absolute top-2 right-2 bg-yellow-500 text-white">
-                        Only {product.quantity} left
-                      </Badge>
-                    )}
-                    {product.quantity === 0 && (
-                      <Badge className="absolute top-2 right-2 bg-red-500 text-white">
-                        Out of Stock
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  <div className="p-4">
-                    <h3 className="font-semibold text-lg mb-2 line-clamp-2 group-hover:text-orange-500 transition-colors">
-                      {product.name}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                      {product.description}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold text-orange-500">
-                        ₹{product.price.toLocaleString()}
-                      </span>
-                      <Button
-                        size="sm"
-                        className="bg-orange-500 hover:bg-orange-600 text-white"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleProductClick(product.id)
-                        }}
-                      >
-                        View
-                      </Button>
                     </div>
-                  </div>
-                </Card>
+
+                    <div className="p-4 flex-1 flex flex-col">
+                      <h3 className="font-semibold text-base mb-1 line-clamp-2 group-hover:text-orange-500 transition-colors">
+                        {product.name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mb-3 line-clamp-1">
+                        {product.category}
+                      </p>
+                      <div className="flex items-center gap-1 mb-3">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`h-3 w-3 ${i < 4 ? "fill-amber-400 text-amber-400" : "text-gray-300"}`}
+                          />
+                        ))}
+                        <span className="text-xs text-muted-foreground ml-1">(28)</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-4 line-clamp-2">
+                        {product.description}
+                      </p>
+                      <div className="mt-auto flex items-center justify-between pt-2 border-t border-border">
+                        <span className="text-lg font-bold text-orange-600">
+                          ₹{product.price.toLocaleString()}
+                        </span>
+                        <Button
+                          size="sm"
+                          className="bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleProductClick(product.id)
+                          }}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
               ))}
             </div>
           )}
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border bg-muted/30 py-12 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded bg-gradient-to-br from-orange-500 to-amber-500"></div>
-                <span className="text-xl font-bold">LiveMART</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Connecting customers, retailers, and wholesalers seamlessly.
-              </p>
-            </div>
-            
-            <div>
-              <h4 className="font-semibold mb-4">For Customers</h4>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <button onClick={() => router.push("/")} className="text-muted-foreground hover:text-orange-500 transition-colors">
-                    Browse Products
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => isAuthenticated ? router.push("/customer/orders") : setShowLogin(true)} className="text-muted-foreground hover:text-orange-500 transition-colors">
-                    Track Orders
-                  </button>
-                </li>
-                <li>
-                  <button className="text-muted-foreground hover:text-orange-500 transition-colors">
-                    Return Policy
-                  </button>
-                </li>
-              </ul>
-            </div>
-            
-            <div>
-              <h4 className="font-semibold mb-4">For Sellers</h4>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <button onClick={() => setShowLogin(true)} className="text-muted-foreground hover:text-orange-500 transition-colors">
-                    Become a Retailer
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => setShowLogin(true)} className="text-muted-foreground hover:text-orange-500 transition-colors">
-                    Wholesaler Program
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => isAuthenticated ? handleProfileClick() : setShowLogin(true)} className="text-muted-foreground hover:text-orange-500 transition-colors">
-                    Seller Dashboard
-                  </button>
-                </li>
-              </ul>
-            </div>
-            
-            <div>
-              <h4 className="font-semibold mb-4">Support</h4>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <button className="text-muted-foreground hover:text-orange-500 transition-colors">
-                    Help Center
-                  </button>
-                </li>
-                <li>
-                  <button className="text-muted-foreground hover:text-orange-500 transition-colors">
-                    Contact Us
-                  </button>
-                </li>
-                <li>
-                  <button className="text-muted-foreground hover:text-orange-500 transition-colors">
-                    Terms & Conditions
-                  </button>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </footer>
 
       {/* Login Modal */}
       {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
     </div>
+  )
+}
+
+function RotatedReturn() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-6 w-6"
+    >
+      <path d="M3 7v6h6M21 17v-6h-6" />
+      <path d="M18.5 9C19.5 7.5 21 6 21 6M5.5 15C4.5 16.5 3 18 3 18" />
+    </svg>
   )
 }
