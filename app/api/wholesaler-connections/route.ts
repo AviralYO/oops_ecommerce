@@ -4,9 +4,10 @@ import { createClient } from "@supabase/supabase-js"
 // GET - Fetch connections for a user
 export async function GET(request: NextRequest) {
   try {
+    const authToken = request.cookies.get("auth-token")?.value
     const accessToken = request.cookies.get("sb-access-token")?.value
 
-    if (!accessToken) {
+    if (!authToken && !accessToken) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -85,9 +86,10 @@ export async function GET(request: NextRequest) {
 // POST - Create a connection request
 export async function POST(request: NextRequest) {
   try {
+    const authToken = request.cookies.get("auth-token")?.value
     const accessToken = request.cookies.get("sb-access-token")?.value
 
-    if (!accessToken) {
+    if (!authToken && !accessToken) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -199,9 +201,10 @@ export async function POST(request: NextRequest) {
 // PATCH - Update connection status
 export async function PATCH(request: NextRequest) {
   try {
+    const authToken = request.cookies.get("auth-token")?.value
     const accessToken = request.cookies.get("sb-access-token")?.value
 
-    if (!accessToken) {
+    if (!authToken && !accessToken) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }

@@ -4,8 +4,9 @@ import { createClient } from "@supabase/supabase-js"
 export async function POST(request: NextRequest) {
   try {
     // Get user from session
+    const authToken = request.cookies.get("auth-token")?.value
     const accessToken = request.cookies.get("sb-access-token")?.value
-    if (!accessToken) {
+    if (!authToken && !accessToken) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -93,8 +94,9 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     // Get user from session
+    const authToken = request.cookies.get("auth-token")?.value
     const accessToken = request.cookies.get("sb-access-token")?.value
-    if (!accessToken) {
+    if (!authToken && !accessToken) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 

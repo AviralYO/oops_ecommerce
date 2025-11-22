@@ -4,9 +4,10 @@ import { createClient } from "@supabase/supabase-js"
 
 export async function POST(request: NextRequest) {
   try {
+    const authToken = request.cookies.get("auth-token")?.value
     const accessToken = request.cookies.get("sb-access-token")?.value
 
-    if (!accessToken) {
+    if (!authToken && !accessToken) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
