@@ -7,6 +7,7 @@ const signupSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
   name: z.string().min(2, "Name must be at least 2 characters"),
   role: z.enum(["customer", "retailer", "wholesaler"]).default("customer"),
+  pincode: z.string().optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
     
     // Validate input
     const validatedData = signupSchema.parse(body)
-    const { email, password, name, role } = validatedData
+    const { email, password, name, role, pincode } = validatedData
 
     // Create Supabase client for this request
     const supabase = createClient(
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) {
         data: {
           name,
           role,
+          pincode,
         },
       },
     })
@@ -52,6 +54,7 @@ export async function POST(request: NextRequest) {
         email,
         name,
         role,
+        pincode,
       })
       .select()
       .single()

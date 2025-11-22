@@ -7,6 +7,7 @@ export interface User {
   email: string
   name: string
   role: "customer" | "retailer" | "wholesaler"
+  pincode?: string
   createdAt: Date
 }
 
@@ -15,7 +16,7 @@ export interface AuthContextType {
   loading: boolean
   error: string | null
   login: (email: string, password: string) => Promise<User>
-  signup: (name: string, email: string, password: string, role: string) => Promise<User>
+  signup: (name: string, email: string, password: string, role: string, pincode?: string) => Promise<User>
   logout: () => Promise<void>
   isAuthenticated: boolean
 }

@@ -9,16 +9,23 @@ import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
 
 type UserRole = "customer" | "retailer" | "wholesaler" | null
-type AuthMode = "role-select" | "login" | "signup"
+type AuthMode = "role-select" | "auth-method" | "enter-contact" | "enter-otp" | "enter-details" | "login" | "signup"
 
 export default function LoginModal({ onClose }: { onClose: () => void }) {
   const [mode, setMode] = useState<AuthMode>("role-select")
+  const [authMethod, setAuthMethod] = useState<"otp" | "password" | null>(null)
   const [selectedRole, setSelectedRole] = useState<UserRole>(null)
+  const [contact, setContact] = useState("") // phone or email
+  const [otp, setOtp] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [name, setName] = useState("")
+  const [pincode, setPincode] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [otpSent, setOtpSent] = useState(false)
+  const [isSignup, setIsSignup] = useState(true) // true for signup, false for login
+  const [devOtp, setDevOtp] = useState<string | null>(null) // For development testing
 
   const { login, signup } = useAuth()
   const router = useRouter()
@@ -31,11 +38,133 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
 
   const handleRoleSelect = (role: UserRole) => {
     setSelectedRole(role)
-    setMode("login")
+    setMode("auth-method")
     setError(null)
-    if (role && DEMO_CREDENTIALS[role]) {
-      setEmail(DEMO_CREDENTIALS[role].email)
-      setPassword(DEMO_CREDENTIALS[role].password)
+  }
+
+  const handleAuthMethodSelect = (method: "signup-otp" | "login-otp" | "password") => {
+    if (method === "signup-otp") {
+      setIsSignup(true)
+      setAuthMethod("otp")
+      setMode("enter-contact")
+    } else if (method === "login-otp") {
+      setIsSignup(false)
+      setAuthMethod("otp")
+      setMode("enter-contact")
+    } else {
+      setAuthMethod("password")
+      setMode("login")
+      if (selectedRole && DEMO_CREDENTIALS[selectedRole]) {
+        setEmail(DEMO_CREDENTIALS[selectedRole].email)
+        setPassword(DEMO_CREDENTIALS[selectedRole].password)
+      }
+    }
+    setError(null)
+  }
+
+  const handleSendOTP = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          contact, 
+          isSignup,
+          role: selectedRole 
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to send OTP")
+      }
+
+      setOtpSent(true)
+      setMode("enter-otp")
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send OTP")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleVerifyOTP = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          contact, 
+          otp,
+          isSignup 
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Invalid OTP")
+      }
+
+      if (isSignup) {
+        // Go to details entry for signup
+        setMode("enter-details")
+      } else {
+        // Login successful - reload to update auth context
+        window.location.href = `/${data.role}`
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "OTP verification failed")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCompleteSignup = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError(null)
+
+    if (!pincode || pincode.length < 5) {
+      setError("Please enter a valid pincode")
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      const response = await fetch("/api/auth/complete-signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          contact,
+          name,
+          pincode,
+          role: selectedRole || "customer"
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Signup failed")
+      }
+
+      // Signup successful - reload to update auth context
+      window.location.href = `/${data.role}`
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Signup failed")
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -76,8 +205,14 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
     setIsLoading(true)
     setError(null)
 
+    if (!pincode || pincode.length < 5) {
+      setError("Please enter a valid pincode")
+      setIsLoading(false)
+      return
+    }
+
     try {
-      const userData = await signup(name, email, password, selectedRole || "customer")
+      const userData = await signup(name, email, password, selectedRole || "customer", pincode)
       console.log("[v0] Signup successful, redirecting based on role:", userData?.role)
 
       // Redirect based on ACTUAL user role from database
@@ -140,9 +275,12 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
             <div className="mb-6">
               <h2 className="text-2xl font-bold mb-2">Welcome to LiveMART</h2>
               <p className="text-muted-foreground text-sm">
-                {mode === "role-select"
-                  ? "Select your role to continue"
-                  : `${mode === "login" ? "Sign in" : "Create account"} as ${selectedRole}`}
+                {mode === "role-select" && "Select your role to continue"}
+                {mode === "auth-method" && `Continue as ${selectedRole}`}
+                {mode === "enter-contact" && `Enter your ${isSignup ? "phone number or email" : "registered contact"}`}
+                {mode === "enter-otp" && "Enter the OTP sent to your contact"}
+                {mode === "enter-details" && "Complete your profile"}
+                {(mode === "login" || mode === "signup") && `${mode === "login" ? "Sign in" : "Create account"} as ${selectedRole}`}
               </p>
             </div>
 
@@ -176,6 +314,140 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
                   </button>
                 ))}
               </div>
+            ) : mode === "auth-method" ? (
+              <div className="space-y-3">
+                <button
+                  onClick={() => handleAuthMethodSelect("signup-otp")}
+                  className="w-full p-4 rounded-lg border border-border hover:bg-primary/10 hover:border-primary transition-all text-left"
+                >
+                  <div className="font-semibold">Sign Up via OTP</div>
+                  <p className="text-xs text-muted-foreground">Create new account with phone verification</p>
+                </button>
+                <button
+                  onClick={() => handleAuthMethodSelect("login-otp")}
+                  className="w-full p-4 rounded-lg border border-border hover:bg-primary/10 hover:border-primary transition-all text-left"
+                >
+                  <div className="font-semibold">Login via OTP</div>
+                  <p className="text-xs text-muted-foreground">Sign in with phone verification</p>
+                </button>
+                <button
+                  onClick={() => handleAuthMethodSelect("password")}
+                  className="w-full p-4 rounded-lg border border-border hover:bg-primary/10 hover:border-primary transition-all text-left"
+                >
+                  <div className="font-semibold">Login with Password</div>
+                  <p className="text-xs text-muted-foreground">Traditional email & password login</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("role-select")
+                    setSelectedRole(null)
+                    setError(null)
+                  }}
+                  className="w-full text-sm text-muted-foreground hover:text-foreground mt-4"
+                >
+                  ← Choose different role
+                </button>
+              </div>
+            ) : mode === "enter-contact" ? (
+              <form onSubmit={handleSendOTP} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Phone Number or Email</label>
+                  <input
+                    type="text"
+                    value={contact}
+                    onChange={(e) => setContact(e.target.value)}
+                    placeholder="Enter phone or email"
+                    className="w-full px-4 py-2 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    required
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold disabled:opacity-50"
+                >
+                  {isLoading ? "Sending..." : "Send OTP"}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setMode("auth-method")}
+                  className="w-full text-sm text-muted-foreground hover:text-foreground"
+                >
+                  ← Back
+                </button>
+              </form>
+            ) : mode === "enter-otp" ? (
+              <form onSubmit={handleVerifyOTP} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Enter OTP</label>
+                  <input
+                    type="text"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="Enter 6-digit OTP"
+                    className="w-full px-4 py-2 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 text-center text-2xl tracking-widest"
+                    required
+                    maxLength={6}
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    OTP sent to {contact}
+                  </p>
+                </div>
+                <Button
+                  type="submit"
+                  disabled={isLoading || otp.length !== 6}
+                  className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold disabled:opacity-50"
+                >
+                  {isLoading ? "Verifying..." : "Verify OTP"}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("enter-contact")
+                    setOtp("")
+                  }}
+                  className="w-full text-sm text-primary hover:underline"
+                >
+                  Resend OTP
+                </button>
+              </form>
+            ) : mode === "enter-details" ? (
+              <form onSubmit={handleCompleteSignup} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Full Name</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="John Doe"
+                    className="w-full px-4 py-2 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Pincode</label>
+                  <input
+                    type="text"
+                    value={pincode}
+                    onChange={(e) => setPincode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="Enter your 6-digit pincode"
+                    className="w-full px-4 py-2 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    required
+                    maxLength={6}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    We'll show you products from nearby retailers
+                  </p>
+                </div>
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold disabled:opacity-50"
+                >
+                  {isLoading ? "Creating Account..." : "Complete Signup"}
+                </Button>
+              </form>
             ) : (
               <form onSubmit={mode === "login" ? handleLogin : handleSignup} className="space-y-4">
                 {mode === "signup" && (
@@ -215,6 +487,24 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
                     required
                   />
                 </div>
+
+                {mode === "signup" && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Pincode</label>
+                    <input
+                      type="text"
+                      value={pincode}
+                      onChange={(e) => setPincode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      placeholder="Enter your 6-digit pincode"
+                      className="w-full px-4 py-2 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      required
+                      maxLength={6}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      We'll show you products from nearby retailers
+                    </p>
+                  </div>
+                )}
 
                 {mode === "login" && (
                   <p className="text-xs text-muted-foreground">

@@ -3,7 +3,36 @@ import { createClient } from "@supabase/supabase-js"
 
 export async function GET(request: NextRequest) {
   try {
-    // Get tokens from cookies
+    // Check for OTP-based auth token first (simple user ID)
+    const authToken = request.cookies.get("auth-token")?.value
+    
+    if (authToken) {
+      console.log("[Auth /me] Auth token exists, fetching user profile")
+      
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      )
+      
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", authToken)
+        .single()
+      
+      if (!error && profile) {
+        return NextResponse.json({
+          id: profile.id,
+          email: profile.email,
+          name: profile.name,
+          role: profile.role,
+          pincode: profile.pincode,
+          createdAt: profile.created_at,
+        })
+      }
+    }
+    
+    // Get tokens from cookies (for OAuth/password login)
     const accessToken = request.cookies.get("sb-access-token")?.value
     const refreshToken = request.cookies.get("sb-refresh-token")?.value
     

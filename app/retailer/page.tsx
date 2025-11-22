@@ -11,6 +11,9 @@ import OrdersPanel from "@/components/retailer/orders-panel"
 import WholesalerConnections from "@/components/retailer/wholesaler-connections"
 import InventoryAlerts from "@/components/retailer/inventory-alerts"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { MapPin } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 export default function RetailerDashboard() {
   const { user, isAuthenticated, loading } = useAuth()
@@ -118,6 +121,25 @@ export default function RetailerDashboard() {
   return (
     <RetailerLayout>
       <div className="space-y-8">
+        {!user?.pincode && (
+          <Alert className="border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800">
+            <MapPin className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+            <AlertDescription className="ml-2 flex items-center justify-between">
+              <span className="text-orange-800 dark:text-orange-200">
+                <strong>Add your pincode</strong> to increase visibility to nearby customers and boost local sales!
+              </span>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="ml-4 border-orange-300 text-orange-700 hover:bg-orange-100 dark:border-orange-700 dark:text-orange-300 dark:hover:bg-orange-900/30"
+                onClick={() => router.push("/retailer/profile")}
+              >
+                Add Pincode
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <div>
           <h1 className="text-4xl font-bold mb-2">Retailer Dashboard</h1>
           <p className="text-muted-foreground">Manage your inventory, track sales, and optimize your store</p>

@@ -59,14 +59,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
-  const signup = async (name: string, email: string, password: string, role: string) => {
+  const signup = async (name: string, email: string, password: string, role: string, pincode?: string) => {
     setLoading(true)
     setError(null)
     try {
       const response = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, role }),
+        body: JSON.stringify({ name, email, password, role, pincode }),
       })
 
       if (!response.ok) {

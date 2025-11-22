@@ -7,6 +7,9 @@ import CustomerLayout from "@/components/customer/customer-layout"
 import ProductGrid from "@/components/customer/product-grid"
 import ShoppingCart from "@/components/customer/shopping-cart"
 import { useToast } from "@/hooks/use-toast"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { MapPin } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 export default function CustomerDashboard() {
   const { user, isAuthenticated, loading } = useAuth()
@@ -172,9 +175,34 @@ export default function CustomerDashboard() {
       sortBy={sortBy}
       onSortChange={setSortBy}
     >
+      {!user?.pincode && (
+        <Alert className="mb-6 border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800">
+          <MapPin className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+          <AlertDescription className="ml-2 flex items-center justify-between">
+            <span className="text-orange-800 dark:text-orange-200">
+              <strong>Add your pincode</strong> to see products from nearby retailers first and enjoy faster delivery!
+            </span>
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="ml-4 border-orange-300 text-orange-700 hover:bg-orange-100 dark:border-orange-700 dark:text-orange-300 dark:hover:bg-orange-900/30"
+              onClick={() => router.push("/customer/profile")}
+            >
+              Add Pincode
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <div className="flex gap-6">
         <div className="flex-1">
-          <ProductGrid onAddToCart={addToCart} selectedCategory={selectedCategory} searchTerm={searchTerm} sortBy={sortBy} />
+          <ProductGrid 
+            onAddToCart={addToCart} 
+            selectedCategory={selectedCategory} 
+            searchTerm={searchTerm} 
+            sortBy={sortBy}
+            userPincode={user?.pincode}
+          />
         </div>
         {showCart && (
           <div className="w-96">

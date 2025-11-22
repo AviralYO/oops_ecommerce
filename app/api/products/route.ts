@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     const retailerId = searchParams.get("retailer_id")
     const category = searchParams.get("category")
     const status = searchParams.get("status")
+    const userPincode = searchParams.get("pincode")
 
     // Use service role client to bypass RLS
     const supabaseAdmin = createClient(
@@ -30,7 +31,13 @@ export async function GET(request: NextRequest) {
       }
     )
 
-    let query = supabaseAdmin.from("products").select("*")
+    // Join with profiles to get retailer pincode
+    let query = supabaseAdmin
+      .from("products")
+      .select(`
+        *,
+        retailer:retailer_id(id, name, pincode)
+      `)
 
     if (retailerId) {
       query = query.eq("retailer_id", retailerId)
@@ -42,13 +49,36 @@ export async function GET(request: NextRequest) {
       query = query.eq("status", status)
     }
 
-    const { data: products, error } = await query.order("created_at", { ascending: false })
+    const { data: products, error } = await query
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ products }, { status: 200 })
+    // Sort by location if user pincode is provided
+    let sortedProducts = products || []
+    if (userPincode && sortedProducts.length > 0) {
+      sortedProducts = sortedProducts.sort((a: any, b: any) => {
+        const aRetailerPincode = a.retailer?.pincode
+        const bRetailerPincode = b.retailer?.pincode
+        
+        // Products from same pincode come first
+        const aMatch = aRetailerPincode === userPincode ? 0 : 1
+        const bMatch = bRetailerPincode === userPincode ? 0 : 1
+        
+        if (aMatch !== bMatch) return aMatch - bMatch
+        
+        // Then sort by created date
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      })
+    } else {
+      // Default sort by created date
+      sortedProducts.sort((a: any, b: any) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+    }
+
+    return NextResponse.json({ products: sortedProducts }, { status: 200 })
   } catch (error) {
     console.error("[Products] GET error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

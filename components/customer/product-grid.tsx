@@ -22,21 +22,24 @@ interface ProductGridProps {
   selectedCategory: string
   searchTerm?: string
   sortBy?: string
+  userPincode?: string
 }
 
-export default function ProductGrid({ onAddToCart, selectedCategory, searchTerm = "", sortBy = "featured" }: ProductGridProps) {
+export default function ProductGrid({ onAddToCart, selectedCategory, searchTerm = "", sortBy = "featured", userPincode }: ProductGridProps) {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchProducts()
-  }, [])
+  }, [userPincode])
 
   const fetchProducts = async () => {
     setLoading(true)
     try {
       // Fetch all products that are in-stock or low-stock (not out-of-stock)
-      const response = await fetch("/api/products")
+      // Include pincode for location-based sorting
+      const url = userPincode ? `/api/products?pincode=${userPincode}` : "/api/products"
+      const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
         // Filter out out-of-stock products
