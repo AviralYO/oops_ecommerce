@@ -19,46 +19,7 @@ interface StockManagementProps {
 }
 
 export default function StockManagement({ items, searchTerm = "" }: StockManagementProps) {
-  const defaultItems: StockItem[] = [
-    {
-      id: "1",
-      productName: "Wireless Headphones",
-      sku: "WH-001",
-      quantity: 500,
-      minStock: 100,
-      unitPrice: convertUSDtoINR(50.0),
-      totalValue: convertUSDtoINR(25000),
-    },
-    {
-      id: "2",
-      productName: "USB-C Cables",
-      sku: "UC-002",
-      quantity: 1200,
-      minStock: 300,
-      unitPrice: convertUSDtoINR(5.0),
-      totalValue: convertUSDtoINR(6000),
-    },
-    {
-      id: "3",
-      productName: "Phone Cases",
-      sku: "PC-003",
-      quantity: 80,
-      minStock: 200,
-      unitPrice: convertUSDtoINR(8.0),
-      totalValue: convertUSDtoINR(640),
-    },
-    {
-      id: "4",
-      productName: "Screen Protectors",
-      sku: "SP-004",
-      quantity: 2000,
-      minStock: 500,
-      unitPrice: convertUSDtoINR(2.0),
-      totalValue: convertUSDtoINR(4000),
-    },
-  ]
-
-  const displayItems = items || defaultItems
+  const displayItems = items || []
   
   const filteredItems = displayItems.filter((item) => {
     const matchesSearch = searchTerm === "" || 

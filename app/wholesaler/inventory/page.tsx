@@ -38,7 +38,7 @@ export default function WholesalerInventory() {
         const response = await fetch("/api/products?wholesaler=true&inventory=true")
         if (response.ok) {
           const data = await response.json()
-          setInventory(data)
+          setInventory(data.products || [])
         } else {
           setInventory([])
         }

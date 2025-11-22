@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const accessToken = request.cookies.get("sb-access-token")?.value
@@ -11,6 +11,8 @@ export async function GET(
     if (!accessToken) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
+
+    const { id: orderId } = await params
 
     const authenticatedSupabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,8 +32,20 @@ export async function GET(
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
+    // Use service role client to bypass RLS
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
+
     // Fetch order with items and tracking
-    const { data: order, error: orderError } = await authenticatedSupabase
+    const { data: order, error: orderError } = await supabaseAdmin
       .from("orders")
       .select(`
         *,
@@ -45,11 +59,11 @@ export async function GET(
         ),
         profiles!orders_customer_id_fkey (
           name,
-          email,
-          phone
+          email
         )
       `)
-      .eq("id", params.id)
+      .eq("id", orderId)
+      .eq("customer_id", user.id)
       .single()
 
     if (orderError) {
@@ -69,7 +83,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const accessToken = request.cookies.get("sb-access-token")?.value
@@ -77,6 +91,8 @@ export async function PATCH(
     if (!accessToken) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
+
+    const { id: orderId } = await params
 
     const authenticatedSupabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -102,7 +118,7 @@ export async function PATCH(
         delivery_date,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", params.id)
+      .eq("id", orderId)
       .select()
       .single()
 

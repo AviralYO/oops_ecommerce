@@ -19,6 +19,7 @@ export default function RetailerDashboard() {
   const [products, setProducts] = useState<any[]>([])
   const [loadingProducts, setLoadingProducts] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const [wholesalers, setWholesalers] = useState<any[]>([])
 
   // Fetch products from database
   const fetchProducts = async () => {
@@ -38,6 +39,19 @@ export default function RetailerDashboard() {
     }
   }
 
+  // Fetch wholesalers from database
+  const fetchWholesalers = async () => {
+    try {
+      const response = await fetch("/api/profiles?role=wholesaler")
+      if (response.ok) {
+        const data = await response.json()
+        setWholesalers(data.profiles || [])
+      }
+    } catch (error) {
+      console.error("Error fetching wholesalers:", error)
+    }
+  }
+
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.push("/")
@@ -47,6 +61,7 @@ export default function RetailerDashboard() {
   useEffect(() => {
     if (user && user.role === "retailer") {
       fetchProducts()
+      fetchWholesalers()
     }
   }, [user])
 
@@ -141,7 +156,7 @@ export default function RetailerDashboard() {
           </TabsContent>
 
           <TabsContent value="wholesalers">
-            <WholesalerConnections />
+            <WholesalerConnections wholesalers={wholesalers} />
           </TabsContent>
 
           <TabsContent value="add-product">

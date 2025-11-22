@@ -8,12 +8,13 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Clock, Package, Truck, CheckCircle, XCircle } from "lucide-react"
 
 interface OrderItem {
-  id: number
-  product_id: number
+  id: string
+  product_id: string
   quantity: number
-  price: number
+  price_at_purchase: number
   products: {
     name: string
     image_url: string
@@ -22,11 +23,14 @@ interface OrderItem {
 }
 
 interface Order {
-  id: number
+  id: string
   order_number: string
   status: string
   total_amount: number
+  gst_amount: number
+  shipping_amount: number
   created_at: string
+  updated_at: string
   tracking_number?: string
   delivery_date?: string
   shipping_address: string
@@ -39,6 +43,7 @@ export default function OrderDetailsPage() {
   const router = useRouter()
   const [order, setOrder] = useState<Order | null>(null)
   const [loadingOrder, setLoadingOrder] = useState(true)
+  const [statusHistory, setStatusHistory] = useState<any[]>([])
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -49,6 +54,7 @@ export default function OrderDetailsPage() {
   useEffect(() => {
     if (user && params.id) {
       fetchOrderDetails()
+      fetchStatusHistory()
     }
   }, [user, params.id])
 
@@ -63,6 +69,18 @@ export default function OrderDetailsPage() {
       console.error("Failed to fetch order details:", error)
     } finally {
       setLoadingOrder(false)
+    }
+  }
+
+  const fetchStatusHistory = async () => {
+    try {
+      const response = await fetch(`/api/orders/${params.id}/status-history`)
+      if (response.ok) {
+        const data = await response.json()
+        setStatusHistory(data.history || [])
+      }
+    } catch (error) {
+      console.error("Failed to fetch status history:", error)
     }
   }
 
@@ -168,6 +186,91 @@ export default function OrderDetailsPage() {
           )}
         </Card>
 
+        {/* Detailed Status History Timeline */}
+        {statusHistory.length > 0 && (
+          <Card className="bg-card border-border p-6">
+            <h2 className="text-xl font-semibold mb-6">Status History</h2>
+            <div className="relative">
+              <div className="space-y-6">
+                {statusHistory.map((history: any, index: number) => {
+                  const getStatusIcon = (status: string) => {
+                    switch (status.toLowerCase()) {
+                      case "pending":
+                        return <Clock className="h-5 w-5" />
+                      case "confirmed":
+                        return <Package className="h-5 w-5" />
+                      case "shipped":
+                        return <Truck className="h-5 w-5" />
+                      case "delivered":
+                        return <CheckCircle className="h-5 w-5" />
+                      case "cancelled":
+                        return <XCircle className="h-5 w-5" />
+                      default:
+                        return <Clock className="h-5 w-5" />
+                    }
+                  }
+
+                  const getHistoryStatusColor = (status: string) => {
+                    switch (status.toLowerCase()) {
+                      case "pending":
+                        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+                      case "confirmed":
+                        return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
+                      case "shipped":
+                        return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400"
+                      case "delivered":
+                        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                      case "cancelled":
+                        return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                      default:
+                        return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"
+                    }
+                  }
+
+                  return (
+                    <div key={history.id} className="relative pl-8">
+                      {index !== statusHistory.length - 1 && (
+                        <div className="absolute left-2.5 top-8 h-full w-0.5 bg-border" />
+                      )}
+                      <div className={`absolute left-0 top-1 p-1 rounded-full ${
+                        index === 0 ? 'bg-orange-500 text-white' : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {getStatusIcon(history.status)}
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge className={getHistoryStatusColor(history.status)} variant="outline">
+                            {history.status.charAt(0).toUpperCase() + history.status.slice(1)}
+                          </Badge>
+                          {index === 0 && (
+                            <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
+                              Current Status
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(history.created_at).toLocaleString("en-IN", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                        {history.comment && (
+                          <p className="text-sm bg-muted p-3 rounded-md">
+                            {history.comment}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </Card>
+        )}
+
         {/* Order Items */}
         <Card className="bg-card border-border p-6">
           <h2 className="text-xl font-semibold mb-4">Order Items</h2>
@@ -181,12 +284,12 @@ export default function OrderDetailsPage() {
                   <div className="flex-1">
                     <h3 className="font-semibold">{item.products.name}</h3>
                     <p className="text-sm text-muted-foreground">
-                      Quantity: {item.quantity} × ₹{item.price.toLocaleString()}
+                      Quantity: {item.quantity} × ₹{item.price_at_purchase.toLocaleString()}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="font-semibold text-lg">
-                      ₹{(item.quantity * item.price).toLocaleString()}
+                      ₹{(item.quantity * item.price_at_purchase).toLocaleString()}
                     </p>
                     {order.status.toLowerCase() === "delivered" && (
                       <Button

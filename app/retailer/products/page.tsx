@@ -37,7 +37,7 @@ export default function RetailerProducts() {
         const response = await fetch("/api/products?retailer=true")
         if (response.ok) {
           const data = await response.json()
-          setProducts(data)
+          setProducts(Array.isArray(data) ? data : data.products || [])
         } else {
           setProducts([])
         }

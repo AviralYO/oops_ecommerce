@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 
-export async function GET(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const accessToken = request.cookies.get("sb-access-token")?.value
 
@@ -9,6 +12,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
+      )
+    }
+
+    const { id: orderId } = await params
+
+    if (!orderId) {
+      return NextResponse.json(
+        { error: "Order ID is required" },
+        { status: 400 }
       )
     }
 
@@ -47,35 +59,40 @@ export async function GET(request: NextRequest) {
       }
     )
 
-    // Fetch orders with items
-    const { data: orders, error: ordersError } = await supabaseAdmin
+    // Verify order belongs to user
+    const { data: order } = await supabaseAdmin
       .from("orders")
-      .select(`
-        *,
-        order_items (
-          *,
-          products (
-            name,
-            image_url
-          )
-        )
-      `)
-      .eq("customer_id", user.id)
+      .select("customer_id")
+      .eq("id", orderId)
+      .single()
+
+    if (!order || order.customer_id !== user.id) {
+      return NextResponse.json(
+        { error: "Order not found or access denied" },
+        { status: 404 }
+      )
+    }
+
+    // Fetch status history
+    const { data: history, error: historyError } = await supabaseAdmin
+      .from("order_status_history")
+      .select("*")
+      .eq("order_id", orderId)
       .order("created_at", { ascending: false })
 
-    if (ordersError) {
-      console.error("[Orders] Fetch error:", ordersError)
+    if (historyError) {
+      console.error("Status history fetch error:", historyError)
       return NextResponse.json(
-        { error: "Failed to fetch orders" },
+        { error: "Failed to fetch status history" },
         { status: 500 }
       )
     }
 
-    return NextResponse.json({ orders })
-  } catch (error: any) {
-    console.error("[Orders] Error:", error)
+    return NextResponse.json({ history: history || [] })
+  } catch (error) {
+    console.error("Get status history error:", error)
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
+      { error: "Internal server error" },
       { status: 500 }
     )
   }

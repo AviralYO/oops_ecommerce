@@ -35,8 +35,20 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Use service role client to bypass RLS
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
+
     // Fetch cart items with product details
-    const { data: cartItems, error: cartError } = await authenticatedSupabase
+    const { data: cartItems, error: cartError } = await supabaseAdmin
       .from("cart_items")
       .select("*, products(*)")
       .eq("customer_id", user.id)
@@ -194,8 +206,20 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
+    // Use service role client to bypass RLS
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
+
     // Update cart item quantity
-    const { data: updatedItem, error: updateError } = await authenticatedSupabase
+    const { data: updatedItem, error: updateError } = await supabaseAdmin
       .from("cart_items")
       .update({ quantity })
       .eq("id", cart_item_id)
@@ -265,8 +289,20 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
+    // Use service role client to bypass RLS
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
+
     // Delete cart item
-    const { error: deleteError } = await authenticatedSupabase
+    const { error: deleteError } = await supabaseAdmin
       .from("cart_items")
       .delete()
       .eq("id", itemId)

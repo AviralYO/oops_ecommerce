@@ -106,6 +106,13 @@ export default function RetailerLayout({ children }: RetailerLayoutProps) {
                 </Button>
                 <Button
                   variant="ghost"
+                  onClick={() => router.push("/retailer/wholesale-orders")}
+                  className="whitespace-nowrap"
+                >
+                  🏭 Wholesale Orders
+                </Button>
+                <Button
+                  variant="ghost"
                   onClick={() => router.push("/retailer/settings")}
                   className="whitespace-nowrap"
                 >

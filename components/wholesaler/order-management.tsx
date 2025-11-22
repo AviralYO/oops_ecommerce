@@ -23,50 +23,7 @@ interface OrderManagementProps {
 }
 
 export default function OrderManagement({ orders, onStatusUpdate, searchTerm = "" }: OrderManagementProps) {
-  const [localOrders, setLocalOrders] = useState<WholesaleOrder[]>(
-    orders || [
-      {
-        id: "1",
-        orderNumber: "WO-2024-001",
-        retailer: "Tech Store",
-        quantity: 50,
-        total: 2500,
-        status: "pending",
-        date: "2024-11-05",
-        items: 3,
-      },
-      {
-        id: "2",
-        orderNumber: "WO-2024-002",
-        retailer: "Prime Retail",
-        quantity: 100,
-        total: 4500,
-        status: "confirmed",
-        date: "2024-11-04",
-        items: 5,
-      },
-      {
-        id: "3",
-        orderNumber: "WO-2024-003",
-        retailer: "Eco Store",
-        quantity: 75,
-        total: 3200,
-        status: "shipped",
-        date: "2024-11-02",
-        items: 4,
-      },
-      {
-        id: "4",
-        orderNumber: "WO-2024-004",
-        retailer: "City Market",
-        quantity: 120,
-        total: 5200,
-        status: "delivered",
-        date: "2024-10-30",
-        items: 6,
-      },
-    ],
-  )
+  const [localOrders, setLocalOrders] = useState<WholesaleOrder[]>(orders || [])
 
   const handleStatusUpdate = (id: string, newStatus: string) => {
     const updated = localOrders.map((order) => (order.id === id ? { ...order, status: newStatus as any } : order))

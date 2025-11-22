@@ -39,7 +39,7 @@ export default function WholesalerOrders() {
         const response = await fetch("/api/orders?wholesaler=true")
         if (response.ok) {
           const data = await response.json()
-          setOrders(data)
+          setOrders(data.orders || [])
         } else {
           setOrders([])
         }

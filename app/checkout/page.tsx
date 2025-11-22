@@ -77,6 +77,8 @@ export default function CheckoutPage() {
     return calculateSubtotal() + calculateGST()
   }
 
+
+
   const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -265,9 +267,11 @@ export default function CheckoutPage() {
                       required
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Processing..." : `Pay ₹${calculateTotal().toFixed(2)}`}
-                  </Button>
+                  <div className="space-y-2">
+                    <Button type="submit" className="w-full" disabled={loading}>
+                      {loading ? "Processing..." : `Pay ₹${calculateTotal().toFixed(2)}`}
+                    </Button>
+                  </div>
                 </form>
               </CardContent>
             </Card>

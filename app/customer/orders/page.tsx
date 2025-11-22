@@ -13,7 +13,7 @@ interface OrderItem {
   id: string
   product_id: string
   quantity: number
-  price: number
+  price_at_purchase: number
   products: {
     name: string
     image_url: string | null
@@ -153,7 +153,7 @@ export default function CustomerOrders() {
                           <p className="text-sm text-muted-foreground">Quantity: {item.quantity}</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold">{formatCurrency(item.price * item.quantity)}</p>
+                          <p className="font-semibold">{formatCurrency(item.price_at_purchase * item.quantity)}</p>
                         </div>
                       </div>
                     ))}
