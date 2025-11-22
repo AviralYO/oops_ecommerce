@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { sendOrderConfirmedSMS } from "@/lib/sms-notifications"
 
 export async function GET(
   request: NextRequest,
@@ -109,8 +110,20 @@ export async function PATCH(
     const body = await request.json()
     const { status, tracking_number, delivery_date } = body
 
+    // Use admin client for full access
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
+
     // Update order status
-    const { data: order, error: updateError } = await authenticatedSupabase
+    const { data: order, error: updateError } = await supabaseAdmin
       .from("orders")
       .update({
         status,
@@ -127,8 +140,39 @@ export async function PATCH(
       return NextResponse.json({ error: "Failed to update order" }, { status: 500 })
     }
 
-    // TODO: Send notification email/SMS
-    // await sendOrderStatusNotification(order)
+    // Send SMS notification when order is confirmed
+    if (status === "confirmed" && order) {
+      const { data: customerProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("name, email")
+        .eq("id", order.customer_id)
+        .single()
+
+      if (customerProfile) {
+        // Extract phone from email if it's a temp email (phone signup)
+        let customerPhone = ""
+        if (customerProfile.email.includes("@temp.livemart.com")) {
+          customerPhone = customerProfile.email.replace("@temp.livemart.com", "")
+        }
+
+        if (customerPhone) {
+          const estimatedDelivery = delivery_date 
+            ? new Date(delivery_date).toLocaleDateString('en-IN', { 
+                day: 'numeric', 
+                month: 'short', 
+                year: 'numeric' 
+              })
+            : undefined
+
+          sendOrderConfirmedSMS({
+            customerPhone,
+            customerName: customerProfile.name,
+            orderId: order.order_number,
+            estimatedDelivery,
+          }).catch(err => console.error("[Order Update] SMS failed:", err))
+        }
+      }
+    }
 
     return NextResponse.json({ order })
   } catch (error: any) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { sendOrderPlacedSMS } from "@/lib/sms-notifications"
 
 export async function POST(request: NextRequest) {
   try {
@@ -148,6 +149,32 @@ export async function POST(request: NextRequest) {
       .from("cart_items")
       .delete()
       .eq("customer_id", user.id)
+
+    // Get customer profile for SMS notification
+    const { data: customerProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("name, email")
+      .eq("id", user.id)
+      .single()
+
+    // Send SMS notification (don't block response if SMS fails)
+    if (customerProfile) {
+      // Extract phone from email if it's a temp email (phone signup)
+      let customerPhone = ""
+      if (customerProfile.email.includes("@temp.livemart.com")) {
+        customerPhone = customerProfile.email.replace("@temp.livemart.com", "")
+      }
+
+      if (customerPhone) {
+        sendOrderPlacedSMS({
+          customerPhone,
+          customerName: customerProfile.name,
+          orderId: orderNumber,
+          totalAmount: total_amount,
+          itemCount: items.length,
+        }).catch(err => console.error("[Order Place] SMS failed:", err))
+      }
+    }
 
     return NextResponse.json({
       success: true,
