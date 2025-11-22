@@ -4,9 +4,11 @@ import { sendOrderPlacedSMS } from "@/lib/sms-notifications"
 
 export async function POST(request: NextRequest) {
   try {
+    // Check for OTP auth token first
+    const authToken = request.cookies.get("auth-token")?.value
     const accessToken = request.cookies.get("sb-access-token")?.value
 
-    if (!accessToken) {
+    if (!authToken && !accessToken) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -19,6 +21,7 @@ export async function POST(request: NextRequest) {
       gst_amount, 
       shipping_amount = 0, 
       shipping_address, 
+      payment_details,
       items 
     } = body
 
@@ -29,27 +32,35 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create authenticated Supabase client
-    const authenticatedSupabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
+    let userId: string
+
+    if (authToken) {
+      // OTP-based auth - authToken is the user ID
+      userId = authToken
+    } else {
+      // OAuth/password auth
+      const authenticatedSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          global: {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
           },
-        },
-      }
-    )
-
-    // Get user
-    const { data: { user }, error: userError } = await authenticatedSupabase.auth.getUser()
-
-    if (userError || !user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
+        }
       )
+
+      const { data: { user }, error: userError } = await authenticatedSupabase.auth.getUser()
+
+      if (userError || !user) {
+        return NextResponse.json(
+          { error: "User not found" },
+          { status: 404 }
+        )
+      }
+
+      userId = user.id
     }
 
     // Use service role client for database operations
@@ -69,15 +80,17 @@ export async function POST(request: NextRequest) {
 
     // Check stock availability before creating order
     for (const item of items) {
-      const { data: product } = await supabaseAdmin
+      const { data: product, error: productError } = await supabaseAdmin
         .from("products")
         .select("stock_quantity, name")
         .eq("id", item.product_id)
         .single()
 
+      console.log(`[Stock Check] Product ID: ${item.product_id}, Product:`, product, "Error:", productError)
+
       if (!product || product.stock_quantity < item.quantity) {
         return NextResponse.json(
-          { error: `Insufficient stock for ${product?.name || 'product'}. Only ${product?.stock_quantity || 0} available.` },
+          { error: `Insufficient stock for ${product?.name || 'product'}. Only ${product?.stock_quantity || 0} available. Requested: ${item.quantity}` },
           { status: 400 }
         )
       }
@@ -88,12 +101,13 @@ export async function POST(request: NextRequest) {
       .from("orders")
       .insert({
         order_number: orderNumber,
-        customer_id: user.id,
+        customer_id: userId,
         total_amount,
         gst_amount: gst_amount || 0,
         shipping_amount,
         status: "pending",
         shipping_address,
+        payment_details: payment_details || null,
       })
       .select()
       .single()
@@ -148,13 +162,13 @@ export async function POST(request: NextRequest) {
     await supabaseAdmin
       .from("cart_items")
       .delete()
-      .eq("customer_id", user.id)
+      .eq("customer_id", userId)
 
     // Get customer profile for SMS notification
     const { data: customerProfile } = await supabaseAdmin
       .from("profiles")
       .select("name, email")
-      .eq("id", user.id)
+      .eq("id", userId)
       .single()
 
     // Send SMS notification (don't block response if SMS fails)

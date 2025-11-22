@@ -3,36 +3,46 @@ import { createClient } from "@supabase/supabase-js"
 
 export async function GET(request: NextRequest) {
   try {
+    // Check for OTP-based auth token first
+    const authToken = request.cookies.get("auth-token")?.value
     const accessToken = request.cookies.get("sb-access-token")?.value
 
-    if (!accessToken) {
+    if (!authToken && !accessToken) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
       )
     }
 
-    // Create authenticated Supabase client
-    const authenticatedSupabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
+    let userId: string
+
+    if (authToken) {
+      // OTP-based authentication
+      userId = authToken
+    } else {
+      // OAuth/password authentication
+      const authenticatedSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          global: {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
           },
-        },
-      }
-    )
-
-    // Get user
-    const { data: { user }, error: userError } = await authenticatedSupabase.auth.getUser()
-
-    if (userError || !user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
+        }
       )
+
+      const { data: { user }, error: userError } = await authenticatedSupabase.auth.getUser()
+
+      if (userError || !user) {
+        return NextResponse.json(
+          { error: "User not found" },
+          { status: 404 }
+        )
+      }
+
+      userId = user.id
     }
 
     // Use service role client to bypass RLS
@@ -51,7 +61,7 @@ export async function GET(request: NextRequest) {
     const { data: cartItems, error: cartError } = await supabaseAdmin
       .from("cart_items")
       .select("*, products(*)")
-      .eq("customer_id", user.id)
+      .eq("customer_id", userId)
 
     if (cartError) {
       console.error("[Cart GET] Error:", cartError)
@@ -73,52 +83,73 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check for OTP-based auth token first
+    const authToken = request.cookies.get("auth-token")?.value
     const accessToken = request.cookies.get("sb-access-token")?.value
 
-    if (!accessToken) {
+    if (!authToken && !accessToken) {
       return NextResponse.json(
         { error: "Not logged in" },
         { status: 401 }
       )
     }
 
-    // Create authenticated Supabase client
-    const authenticatedSupabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
+    let userId: string
+
+    if (authToken) {
+      // OTP-based authentication
+      userId = authToken
+    } else {
+      // OAuth/password authentication
+      const authenticatedSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          global: {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
           },
-        },
+        }
+      )
+
+      const { data: { user }, error: userError } = await authenticatedSupabase.auth.getUser()
+
+      if (userError || !user) {
+        return NextResponse.json(
+          { error: "Session expired" },
+          { status: 401 }
+        )
       }
-    )
+
+      userId = user.id
+    }
 
     const body = await request.json()
     const { product_id, quantity = 1 } = body
 
-    // Get user
-    const { data: { user }, error: userError } = await authenticatedSupabase.auth.getUser()
-
-    if (userError || !user) {
-      return NextResponse.json(
-        { error: "Session expired" },
-        { status: 401 }
-      )
-    }
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
 
     // Check if item already in cart
-    const { data: existingItem } = await authenticatedSupabase
+    const { data: existingItem } = await supabaseAdmin
       .from("cart_items")
       .select("*")
-      .eq("customer_id", user.id)
+      .eq("customer_id", userId)
       .eq("product_id", product_id)
       .maybeSingle()
 
     if (existingItem) {
       // Update quantity
-      const { data: updatedItem, error: updateError } = await authenticatedSupabase
+      const { data: updatedItem, error: updateError } = await supabaseAdmin
         .from("cart_items")
         .update({ quantity: existingItem.quantity + quantity })
         .eq("id", existingItem.id)
@@ -135,10 +166,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, cartItem: updatedItem })
     } else {
       // Add new item
-      const { data: newItem, error: insertError } = await authenticatedSupabase
+      const { data: newItem, error: insertError } = await supabaseAdmin
         .from("cart_items")
         .insert({
-          customer_id: user.id,
+          customer_id: userId,
           product_id,
           quantity,
         })
@@ -164,27 +195,44 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    const authToken = request.cookies.get("auth-token")?.value
     const accessToken = request.cookies.get("sb-access-token")?.value
 
-    if (!accessToken) {
+    if (!authToken && !accessToken) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
       )
     }
 
-    // Create authenticated Supabase client
-    const authenticatedSupabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
+    let userId: string
+
+    if (authToken) {
+      userId = authToken
+    } else {
+      const authenticatedSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          global: {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
           },
-        },
+        }
+      )
+
+      const { data: { user }, error: userError } = await authenticatedSupabase.auth.getUser()
+
+      if (userError || !user) {
+        return NextResponse.json(
+          { error: "User not found" },
+          { status: 404 }
+        )
       }
-    )
+
+      userId = user.id
+    }
 
     const body = await request.json()
     const { cart_item_id, quantity } = body
@@ -193,16 +241,6 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json(
         { error: "Cart item ID and quantity required" },
         { status: 400 }
-      )
-    }
-
-    // Get user
-    const { data: { user }, error: userError } = await authenticatedSupabase.auth.getUser()
-
-    if (userError || !user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
       )
     }
 
@@ -223,7 +261,7 @@ export async function PATCH(request: NextRequest) {
       .from("cart_items")
       .update({ quantity })
       .eq("id", cart_item_id)
-      .eq("customer_id", user.id)
+      .eq("customer_id", userId)
       .select()
       .single()
 
@@ -247,27 +285,44 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const authToken = request.cookies.get("auth-token")?.value
     const accessToken = request.cookies.get("sb-access-token")?.value
 
-    if (!accessToken) {
+    if (!authToken && !accessToken) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
       )
     }
 
-    // Create authenticated Supabase client
-    const authenticatedSupabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
+    let userId: string
+
+    if (authToken) {
+      userId = authToken
+    } else {
+      const authenticatedSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          global: {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
           },
-        },
+        }
+      )
+
+      const { data: { user }, error: userError } = await authenticatedSupabase.auth.getUser()
+
+      if (userError || !user) {
+        return NextResponse.json(
+          { error: "User not found" },
+          { status: 404 }
+        )
       }
-    )
+
+      userId = user.id
+    }
 
     const { searchParams } = new URL(request.url)
     const itemId = searchParams.get("id")
@@ -276,16 +331,6 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json(
         { error: "Item ID required" },
         { status: 400 }
-      )
-    }
-
-    // Get user
-    const { data: { user }, error: userError } = await authenticatedSupabase.auth.getUser()
-
-    if (userError || !user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
       )
     }
 
@@ -306,7 +351,7 @@ export async function DELETE(request: NextRequest) {
       .from("cart_items")
       .delete()
       .eq("id", itemId)
-      .eq("customer_id", user.id)
+      .eq("customer_id", userId)
 
     if (deleteError) {
       console.error("[Cart] Delete error:", deleteError)

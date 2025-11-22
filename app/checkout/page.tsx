@@ -8,12 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-
-declare global {
-  interface Window {
-    Razorpay: any
-  }
-}
+import { DummyPaymentModal } from "@/components/payment/dummy-payment-modal"
 
 interface CartItem {
   id: string
@@ -35,20 +30,13 @@ export default function CheckoutPage() {
     phone: "",
     address: "",
   })
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
 
   useEffect(() => {
     fetchCartItems()
-    loadRazorpayScript()
   }, [])
-
-  const loadRazorpayScript = () => {
-    const script = document.createElement("script")
-    script.src = "https://checkout.razorpay.com/v1/checkout.js"
-    script.async = true
-    document.body.appendChild(script)
-  }
 
   const fetchCartItems = async () => {
     try {
@@ -79,7 +67,7 @@ export default function CheckoutPage() {
 
 
 
-  const handlePayment = async (e: React.FormEvent) => {
+  const handlePayment = (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!shippingInfo.name || !shippingInfo.email || !shippingInfo.phone || !shippingInfo.address) {
@@ -100,101 +88,52 @@ export default function CheckoutPage() {
       return
     }
 
+    // Open payment modal
+    setShowPaymentModal(true)
+  }
+
+  const handlePaymentSuccess = async (paymentDetails: any) => {
     setLoading(true)
 
     try {
-      // Create Razorpay order
-      const orderResponse = await fetch("/api/orders/create", {
+      // Place order with payment details
+      const orderResponse = await fetch("/api/orders/place", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: calculateTotal(),
-          currency: "INR",
+          total_amount: calculateTotal(),
+          gst_amount: calculateGST(),
+          shipping_address: JSON.stringify(shippingInfo),
+          payment_details: JSON.stringify(paymentDetails),
+          items: cartItems.map(item => ({
+            product_id: item.product_id,
+            quantity: item.quantity,
+            price: item.products.price,
+          })),
         }),
       })
 
       const orderData = await orderResponse.json()
 
-      if (!orderResponse.ok) {
-        throw new Error(orderData.error || "Failed to create order")
+      if (orderResponse.ok) {
+        toast({
+          title: "Success!",
+          description: "Payment successful. Order placed!",
+        })
+        router.push(`/customer/orders`)
+      } else {
+        throw new Error(orderData.error || "Failed to place order")
       }
-
-      // Initialize Razorpay payment
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: orderData.amount,
-        currency: orderData.currency,
-        name: "E-Commerce Platform",
-        description: "Order Payment",
-        order_id: orderData.orderId,
-        handler: async function (response: any) {
-          try {
-            // Verify payment
-            const verifyResponse = await fetch("/api/orders/verify", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                orderDetails: {
-                  total_amount: calculateTotal(),
-                  shipping_address: JSON.stringify(shippingInfo),
-                  items: cartItems.map(item => ({
-                    product_id: item.product_id,
-                    quantity: item.quantity,
-                    price: item.products.price,
-                  })),
-                },
-              }),
-            })
-
-            const verifyData = await verifyResponse.json()
-
-            if (verifyResponse.ok) {
-              toast({
-                title: "Success!",
-                description: "Payment successful. Order placed!",
-              })
-              router.push(`/customer/orders/${verifyData.orderId}`)
-            } else {
-              throw new Error(verifyData.error || "Payment verification failed")
-            }
-          } catch (error: any) {
-            toast({
-              title: "Error",
-              description: error.message || "Payment verification failed",
-              variant: "destructive",
-            })
-          } finally {
-            setLoading(false)
-          }
-        },
-        prefill: {
-          name: shippingInfo.name,
-          email: shippingInfo.email,
-          contact: shippingInfo.phone,
-        },
-        theme: {
-          color: "#000000",
-        },
-        modal: {
-          ondismiss: function () {
-            setLoading(false)
-          },
-        },
-      }
-
-      const razorpay = new window.Razorpay(options)
-      razorpay.open()
     } catch (error: any) {
-      console.error("Payment error:", error)
+      console.error("Order error:", error)
       toast({
         title: "Error",
-        description: error.message || "Failed to initiate payment",
+        description: error.message || "Failed to place order",
         variant: "destructive",
       })
+    } finally {
       setLoading(false)
+      setShowPaymentModal(false)
     }
   }
 
@@ -326,6 +265,13 @@ export default function CheckoutPage() {
           </div>
         )}
       </div>
+
+      <DummyPaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        amount={calculateTotal()}
+        onPaymentSuccess={handlePaymentSuccess}
+      />
     </div>
   )
 }
