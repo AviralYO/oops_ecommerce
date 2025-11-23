@@ -13,20 +13,32 @@ export default function RetailerProfilePage() {
   const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
   const [name, setName] = useState("")
+  const [pincode, setPincode] = useState("")
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (user) {
       setName(user.name || "")
+      setPincode(user.pincode || "")
     }
   }, [user])
 
   const handleSave = async () => {
     setLoading(true)
     try {
-      // TODO: Implement profile update API
-      console.log("Saving profile:", { name })
-      setIsEditing(false)
+      const response = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, pincode }),
+      })
+
+      if (response.ok) {
+        setIsEditing(false)
+        // Refresh the page to update user data
+        window.location.reload()
+      } else {
+        console.error("Failed to update profile")
+      }
     } catch (error) {
       console.error("Error updating profile:", error)
     } finally {
@@ -91,6 +103,26 @@ export default function RetailerProfilePage() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="pincode">Pincode</Label>
+              {isEditing ? (
+                <Input
+                  id="pincode"
+                  value={pincode}
+                  onChange={(e) => setPincode(e.target.value)}
+                  placeholder="Enter your business pincode (e.g., 110001)"
+                  maxLength={6}
+                />
+              ) : (
+                <div className="px-3 py-2 border border-border rounded-md bg-muted">
+                  {user.pincode || "Not set"}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Your pincode helps customers find local products
+              </p>
+            </div>
+
+            <div className="space-y-2">
               <Label>Account Type</Label>
               <div className="px-3 py-2 border border-border rounded-md bg-muted capitalize">
                 Retailer
@@ -112,6 +144,7 @@ export default function RetailerProfilePage() {
                     onClick={() => {
                       setIsEditing(false)
                       setName(user.name || "")
+                      setPincode(user.pincode || "")
                     }}
                     disabled={loading}
                   >
