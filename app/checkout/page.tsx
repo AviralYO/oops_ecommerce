@@ -24,6 +24,9 @@ interface CartItem {
 export default function CheckoutPage() {
   const [loading, setLoading] = useState(false)
   const [cartItems, setCartItems] = useState<CartItem[]>([])
+  const [deliveryMethod, setDeliveryMethod] = useState<'delivery' | 'pickup'>('delivery')
+  const [pickupDate, setPickupDate] = useState("")
+  const [pickupTime, setPickupTime] = useState("")
   const [shippingInfo, setShippingInfo] = useState({
     name: "",
     email: "",
@@ -70,10 +73,28 @@ export default function CheckoutPage() {
   const handlePayment = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!shippingInfo.name || !shippingInfo.email || !shippingInfo.phone || !shippingInfo.address) {
+    if (!shippingInfo.name || !shippingInfo.email || !shippingInfo.phone) {
       toast({
         title: "Error",
-        description: "Please fill all shipping details",
+        description: "Please fill all required details",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (deliveryMethod === 'delivery' && !shippingInfo.address) {
+      toast({
+        title: "Error",
+        description: "Please enter delivery address",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (deliveryMethod === 'pickup' && (!pickupDate || !pickupTime)) {
+      toast({
+        title: "Error",
+        description: "Please select pickup date and time",
         variant: "destructive",
       })
       return
@@ -105,6 +126,8 @@ export default function CheckoutPage() {
           gst_amount: calculateGST(),
           shipping_address: JSON.stringify(shippingInfo),
           payment_details: JSON.stringify(paymentDetails),
+          delivery_method: deliveryMethod,
+          pickup_datetime: deliveryMethod === 'pickup' ? new Date(`${pickupDate}T${pickupTime}:00`).toISOString() : null,
           items: cartItems.map(item => ({
             product_id: item.product_id,
             quantity: item.quantity,
@@ -159,6 +182,29 @@ export default function CheckoutPage() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handlePayment} className="space-y-4">
+                  {/* Delivery Method Toggle */}
+                  <div className="space-y-2">
+                    <Label>Delivery Method *</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant={deliveryMethod === 'delivery' ? 'default' : 'outline'}
+                        onClick={() => setDeliveryMethod('delivery')}
+                        className={deliveryMethod === 'delivery' ? 'bg-orange-500 hover:bg-orange-600' : ''}
+                      >
+                        🚚 Home Delivery
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={deliveryMethod === 'pickup' ? 'default' : 'outline'}
+                        onClick={() => setDeliveryMethod('pickup')}
+                        className={deliveryMethod === 'pickup' ? 'bg-orange-500 hover:bg-orange-600' : ''}
+                      >
+                        📦 Store Pickup
+                      </Button>
+                    </div>
+                  </div>
+
                   <div>
                     <Label htmlFor="name">Full Name *</Label>
                     <Input
@@ -194,18 +240,51 @@ export default function CheckoutPage() {
                       required
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="address">Complete Address *</Label>
-                    <Textarea
-                      id="address"
-                      value={shippingInfo.address}
-                      onChange={(e) =>
-                        setShippingInfo({ ...shippingInfo, address: e.target.value })
-                      }
-                      rows={4}
-                      required
-                    />
-                  </div>
+                  {deliveryMethod === 'delivery' ? (
+                    <div>
+                      <Label htmlFor="address">Complete Address *</Label>
+                      <Textarea
+                        id="address"
+                        value={shippingInfo.address}
+                        onChange={(e) =>
+                          setShippingInfo({ ...shippingInfo, address: e.target.value })
+                        }
+                        rows={4}
+                        required
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                        <p className="text-sm text-amber-800 dark:text-amber-200">
+                          💡 You'll pick up from the retailer's store. Select your preferred date and time.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="pickupDate">Pickup Date *</Label>
+                          <Input
+                            id="pickupDate"
+                            type="date"
+                            value={pickupDate}
+                            onChange={(e) => setPickupDate(e.target.value)}
+                            min={new Date().toISOString().split('T')[0]}
+                            required={deliveryMethod === 'pickup'}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="pickupTime">Pickup Time *</Label>
+                          <Input
+                            id="pickupTime"
+                            type="time"
+                            value={pickupTime}
+                            onChange={(e) => setPickupTime(e.target.value)}
+                            required={deliveryMethod === 'pickup'}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
                   <div className="space-y-2">
                     <Button type="submit" className="w-full" disabled={loading}>
                       {loading ? "Processing..." : `Pay ₹${calculateTotal().toFixed(2)}`}

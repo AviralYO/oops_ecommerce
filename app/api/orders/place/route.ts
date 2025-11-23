@@ -22,6 +22,8 @@ export async function POST(request: NextRequest) {
       shipping_amount = 0, 
       shipping_address, 
       payment_details,
+      delivery_method = 'delivery',
+      pickup_datetime = null,
       items 
     } = body
 
@@ -82,15 +84,15 @@ export async function POST(request: NextRequest) {
     for (const item of items) {
       const { data: product, error: productError } = await supabaseAdmin
         .from("products")
-        .select("stock_quantity, name")
+        .select("quantity, name")
         .eq("id", item.product_id)
         .single()
 
       console.log(`[Stock Check] Product ID: ${item.product_id}, Product:`, product, "Error:", productError)
 
-      if (!product || product.stock_quantity < item.quantity) {
+      if (!product || product.quantity < item.quantity) {
         return NextResponse.json(
-          { error: `Insufficient stock for ${product?.name || 'product'}. Only ${product?.stock_quantity || 0} available. Requested: ${item.quantity}` },
+          { error: `Insufficient stock for ${product?.name || 'product'}. Only ${product?.quantity || 0} available. Requested: ${item.quantity}` },
           { status: 400 }
         )
       }
@@ -146,15 +148,53 @@ export async function POST(request: NextRequest) {
     for (const item of items) {
       const { data: product } = await supabaseAdmin
         .from("products")
-        .select("stock_quantity")
+        .select("quantity")
         .eq("id", item.product_id)
         .single()
 
-      if (product && product.stock_quantity >= item.quantity) {
+      if (product && product.quantity >= item.quantity) {
+        const newQuantity = product.quantity - item.quantity
+        let newStatus = "out-of-stock"
+        if (newQuantity > 10) {
+          newStatus = "in-stock"
+        } else if (newQuantity > 0) {
+          newStatus = "low-stock"
+        }
+        
         await supabaseAdmin
           .from("products")
-          .update({ stock_quantity: product.stock_quantity - item.quantity })
+          .update({ 
+            quantity: newQuantity,
+            status: newStatus
+          })
           .eq("id", item.product_id)
+      }
+    }
+
+    // If pickup order, create offline_orders records
+    if (delivery_method === 'pickup' && pickup_datetime) {
+      for (const item of items) {
+        // Get retailer_id from product
+        const { data: product } = await supabaseAdmin
+          .from("products")
+          .select("retailer_id")
+          .eq("id", item.product_id)
+          .single()
+
+        if (product) {
+          await supabaseAdmin
+            .from("offline_orders")
+            .insert({
+              customer_id: userId,
+              retailer_id: product.retailer_id,
+              product_id: item.product_id,
+              quantity: item.quantity,
+              total_amount: item.price * item.quantity,
+              pickup_datetime,
+              status: 'scheduled',
+              customer_notes: `Order #${orderNumber}`,
+            })
+        }
       }
     }
 

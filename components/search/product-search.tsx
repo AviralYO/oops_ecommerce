@@ -27,8 +27,10 @@ export default function ProductSearch({ onProductSelect }: ProductSearchProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [priceRange, setPriceRange] = useState([0, 10000])
+  const [maxDistance, setMaxDistance] = useState<number>(50) // km
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [userPincode, setUserPincode] = useState("")
 
   const categories = ["all", "electronics", "groceries", "clothing", "books", "home"]
 
@@ -52,15 +54,31 @@ export default function ProductSearch({ onProductSelect }: ProductSearchProps) {
     }
   }
 
+  // Simple distance calculation (placeholder - in production use actual geolocation API)
+  const calculateDistance = (pincode1: string, pincode2: string): number => {
+    if (!pincode1 || !pincode2) return 0
+    // Simplified: estimate 1km per pincode digit difference
+    const diff = Math.abs(parseInt(pincode1) - parseInt(pincode2))
+    return Math.min(diff / 100, 100) // Cap at 100km
+  }
+
   const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
+    return products.filter((product: any) => {
       const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            product.description.toLowerCase().includes(searchTerm.toLowerCase())
       const matchesCategory = selectedCategory === "all" || product.category === selectedCategory
       const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1]
-      return matchesSearch && matchesCategory && matchesPrice
+      
+      // Distance filter
+      let matchesDistance = true
+      if (userPincode && product.retailer?.pincode) {
+        const distance = calculateDistance(userPincode, product.retailer.pincode)
+        matchesDistance = distance <= maxDistance
+      }
+      
+      return matchesSearch && matchesCategory && matchesPrice && matchesDistance
     })
-  }, [products, searchTerm, selectedCategory, priceRange])
+  }, [products, searchTerm, selectedCategory, priceRange, userPincode, maxDistance])
 
   if (loading) {
     return (
@@ -95,7 +113,7 @@ export default function ProductSearch({ onProductSelect }: ProductSearchProps) {
                   onClick={() => setSelectedCategory(cat)}
                   className={
                     selectedCategory === cat
-                      ? "bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white"
+                      ? "bg-linear-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white"
                       : ""
                   }
                 >
@@ -128,6 +146,32 @@ export default function ProductSearch({ onProductSelect }: ProductSearchProps) {
               />
             </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Your Pincode</label>
+              <Input
+                placeholder="Enter pincode"
+                value={userPincode}
+                onChange={(e) => setUserPincode(e.target.value)}
+                className="bg-input border-border"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Max Distance: {maxDistance}km
+              </label>
+              <input
+                type="range"
+                min="1"
+                max="100"
+                value={maxDistance}
+                onChange={(e) => setMaxDistance(Number(e.target.value))}
+                className="w-full cursor-pointer"
+              />
+            </div>
+          </div>
         </div>
       </Card>
 
@@ -143,7 +187,7 @@ export default function ProductSearch({ onProductSelect }: ProductSearchProps) {
               className="bg-card border-border overflow-hidden hover:border-orange-500 transition-colors cursor-pointer"
               onClick={() => onProductSelect?.(product)}
             >
-              <div className="relative h-48 bg-gradient-to-br from-slate-200 to-slate-300 overflow-hidden">
+              <div className="relative h-48 bg-linear-to-br from-slate-200 to-slate-300 overflow-hidden">
                 {product.image_url ? (
                   <img
                     src={product.image_url}

@@ -133,6 +133,53 @@ export async function PATCH(request: NextRequest) {
         })
     }
 
+    // Send notification to customer about status update
+    const { data: customer } = await supabaseAdmin
+      .from("profiles")
+      .select("name, email")
+      .eq("id", updatedOrder.customer_id)
+      .single()
+
+    if (customer) {
+      const statusMessages: Record<string, string> = {
+        confirmed: "Your order has been confirmed and is being prepared.",
+        shipped: "Your order has been shipped and is on its way!",
+        delivered: "Your order has been delivered. Thank you for shopping with us!",
+        cancelled: "Your order has been cancelled."
+      }
+
+      const message = statusMessages[status] || `Your order status has been updated to ${status}`
+
+      // Send email notification
+      fetch(`${request.nextUrl.origin}/api/notifications`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: updatedOrder.customer_id,
+          notification_type: "email",
+          message_type: `order_${status}`,
+          recipient: customer.email,
+          message_content: `Hi ${customer.name}, ${message} Order #${updatedOrder.order_number}`,
+        }),
+      }).catch(err => console.error("Email notification failed:", err))
+
+      // Send SMS notification if phone available
+      if (customer.email.includes("@temp.livemart.com")) {
+        const phone = customer.email.replace("@temp.livemart.com", "")
+        fetch(`${request.nextUrl.origin}/api/notifications`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: updatedOrder.customer_id,
+            notification_type: "sms",
+            message_type: `order_${status}`,
+            recipient: phone,
+            message_content: `${message} Order #${updatedOrder.order_number}`,
+          }),
+        }).catch(err => console.error("SMS notification failed:", err))
+      }
+    }
+
     return NextResponse.json({
       success: true,
       order: updatedOrder,

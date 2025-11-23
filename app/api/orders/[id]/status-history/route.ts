@@ -25,27 +25,35 @@ export async function GET(
       )
     }
 
-    // Create authenticated Supabase client
-    const authenticatedSupabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
+    let userId: string
+
+    if (authToken) {
+      // OTP-based auth - authToken is the user ID
+      userId = authToken
+    } else {
+      // OAuth/password auth
+      const authenticatedSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          global: {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
           },
-        },
-      }
-    )
-
-    // Get user
-    const { data: { user }, error: userError } = await authenticatedSupabase.auth.getUser()
-
-    if (userError || !user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
+        }
       )
+
+      const { data: { user }, error: userError } = await authenticatedSupabase.auth.getUser()
+
+      if (userError || !user) {
+        return NextResponse.json(
+          { error: "User not found" },
+          { status: 404 }
+        )
+      }
+
+      userId = user.id
     }
 
     // Use service role client to bypass RLS
@@ -67,7 +75,7 @@ export async function GET(
       .eq("id", orderId)
       .single()
 
-    if (!order || order.customer_id !== user.id) {
+    if (!order || order.customer_id !== userId) {
       return NextResponse.json(
         { error: "Order not found or access denied" },
         { status: 404 }

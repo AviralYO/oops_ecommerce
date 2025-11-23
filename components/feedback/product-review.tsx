@@ -2,98 +2,117 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import { useToast } from "@/hooks/use-toast"
 
 interface Review {
   id: string
-  author: string
+  customer_id?: string
   rating: number
-  title: string
-  comment: string
-  date: string
-  verified: boolean
-  helpful: number
+  review_text: string
+  created_at: string
+  profiles?: {
+    name: string
+    email: string
+  }
 }
 
 interface ProductReviewProps {
-  productId?: string
+  productId: string
   productName?: string
-  reviews?: Review[]
-  onSubmitReview?: (review: Omit<Review, "id" | "date">) => void
+  orderId?: string
 }
 
 export default function ProductReview({
-  productId = "1",
-  productName = "Wireless Headphones",
-  reviews,
-  onSubmitReview,
+  productId,
+  productName = "Product",
+  orderId,
 }: ProductReviewProps) {
   const [rating, setRating] = useState(0)
-  const [title, setTitle] = useState("")
-  const [comment, setComment] = useState("")
+  const [reviewText, setReviewText] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
 
-  const defaultReviews: Review[] = [
-    {
-      id: "1",
-      author: "Sarah Johnson",
-      rating: 5,
-      title: "Excellent sound quality!",
-      comment:
-        "The sound quality is amazing, very comfortable to wear for long periods. Battery lasts easily 10+ hours.",
-      date: "2024-11-01",
-      verified: true,
-      helpful: 245,
-    },
-    {
-      id: "2",
-      author: "Michael Chen",
-      rating: 4,
-      title: "Great headphones, minor issues",
-      comment: "Good build quality and sound. My only complaint is the charging port could be more durable.",
-      date: "2024-10-28",
-      verified: true,
-      helpful: 128,
-    },
-    {
-      id: "3",
-      author: "Emily Rodriguez",
-      rating: 5,
-      title: "Best purchase ever!",
-      comment: "I use these daily for work and exercise. They never disappoint. Highly recommended!",
-      date: "2024-10-25",
-      verified: true,
-      helpful: 89,
-    },
-  ]
+  useEffect(() => {
+    fetchReviews()
+  }, [productId])
 
-  const displayReviews = reviews || defaultReviews
-  const averageRating = (displayReviews.reduce((sum, r) => sum + r.rating, 0) / displayReviews.length).toFixed(1)
+  const fetchReviews = async () => {
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/reviews?product_id=${productId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setReviews(data.reviews || [])
+      }
+    } catch (error) {
+      console.error("Error fetching reviews:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const averageRating = reviews.length > 0
+    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+    : "0.0"
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title || !comment || rating === 0) return
+    if (!reviewText || rating === 0) {
+      toast({
+        title: "Error",
+        description: "Please provide a rating and review text",
+        variant: "destructive",
+      })
+      return
+    }
 
     setIsSubmitting(true)
-    setTimeout(() => {
-      onSubmitReview?.({
-        author: "You",
-        rating,
-        title,
-        comment,
-        verified: true,
-        helpful: 0,
+    try {
+      const response = await fetch("/api/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          product_id: productId,
+          order_id: orderId,
+          rating,
+          review_text: reviewText,
+        }),
       })
-      setRating(0)
-      setTitle("")
-      setComment("")
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: "Success!",
+          description: "Your review has been submitted",
+        })
+        setRating(0)
+        setReviewText("")
+        fetchReviews()
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to submit review",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to submit review",
+        variant: "destructive",
+      })
+    } finally {
       setIsSubmitting(false)
-    }, 1000)
+    }
   }
 
   return (
@@ -101,25 +120,28 @@ export default function ProductReview({
       {/* Review Summary */}
       <Card className="bg-card border-border p-6">
         <h3 className="text-xl font-bold mb-6">Customer Reviews</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div>
-            <p className="text-4xl font-bold mb-2">{averageRating}</p>
-            <p className="text-sm text-muted-foreground">Average rating</p>
-            <div className="mt-2">
-              <span className="text-lg">⭐</span>
-              <span className="text-sm text-muted-foreground ml-2">({displayReviews.length} reviews)</span>
+        {loading ? (
+          <p className="text-muted-foreground">Loading reviews...</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div>
+              <p className="text-4xl font-bold mb-2">{averageRating}</p>
+              <p className="text-sm text-muted-foreground">Average rating</p>
+              <div className="mt-2">
+                <span className="text-lg">⭐</span>
+                <span className="text-sm text-muted-foreground ml-2">({reviews.length} reviews)</span>
+              </div>
             </div>
-          </div>
-          <div className="md:col-span-3 space-y-2">
-            {[5, 4, 3, 2, 1].map((star) => {
-              const count = displayReviews.filter((r) => r.rating === star).length
-              const percentage = (count / displayReviews.length) * 100
+            <div className="md:col-span-3 space-y-2">
+              {[5, 4, 3, 2, 1].map((star) => {
+                const count = reviews.filter((r) => r.rating === star).length
+                const percentage = reviews.length > 0 ? (count / reviews.length) * 100 : 0
               return (
                 <div key={star} className="flex items-center gap-2">
                   <span className="text-sm w-12">{star} ★</span>
                   <div className="flex-1 h-2 bg-accent rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-orange-500 to-amber-500"
+                      className="h-full bg-linear-to-r from-orange-500 to-amber-500"
                       style={{ width: `${percentage}%` }}
                     ></div>
                   </div>
@@ -152,21 +174,10 @@ export default function ProductReview({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Title</label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Summarize your experience"
-              className="bg-input border-border"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">Comment</label>
+            <label className="block text-sm font-medium mb-2">Your Review</label>
             <Textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
+              value={reviewText}
+              onChange={(e) => setReviewText(e.target.value)}
               placeholder="Share your detailed experience with this product..."
               className="bg-input border-border min-h-24"
               required
@@ -175,8 +186,8 @@ export default function ProductReview({
 
           <Button
             type="submit"
-            disabled={isSubmitting || rating === 0 || !title || !comment}
-            className="bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-semibold"
+            disabled={isSubmitting || rating === 0 || !reviewText}
+            className="bg-linear-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-semibold"
           >
             {isSubmitting ? "Submitting..." : "Submit Review"}
           </Button>
@@ -185,32 +196,29 @@ export default function ProductReview({
 
       {/* Reviews List */}
       <div className="space-y-4">
-        {displayReviews.map((review) => (
-          <Card key={review.id} className="bg-card border-border p-6">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="font-semibold">{review.author}</p>
-                  {review.verified && <Badge className="bg-green-500/20 text-green-700 text-xs">Verified</Badge>}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">{"⭐".repeat(review.rating)}</span>
-                  <span className="text-xs text-muted-foreground">{review.date}</span>
+        {reviews.length === 0 ? (
+          <Card className="bg-card border-border p-6 text-center">
+            <p className="text-muted-foreground">No reviews yet. Be the first to review!</p>
+          </Card>
+        ) : (
+          reviews.map((review) => (
+            <Card key={review.id} className="bg-card border-border p-6">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="font-semibold">{review.profiles?.name || "Anonymous"}</p>
+                    <Badge className="bg-green-500/20 text-green-700 text-xs">Verified Purchase</Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">{"⭐".repeat(review.rating)}</span>
+                    <span className="text-xs text-muted-foreground">{new Date(review.created_at).toLocaleDateString()}</span>
                 </div>
               </div>
             </div>
-            <h4 className="font-semibold mb-2">{review.title}</h4>
-            <p className="text-muted-foreground mb-3 text-sm">{review.comment}</p>
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" className="text-xs">
-                👍 Helpful ({review.helpful})
-              </Button>
-              <Button variant="ghost" size="sm" className="text-xs">
-                👎 Not helpful
-              </Button>
-            </div>
+            <p className="text-muted-foreground mb-3 text-sm">{review.review_text}</p>
           </Card>
-        ))}
+          ))
+        )}
       </div>
     </div>
   )

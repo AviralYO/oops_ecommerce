@@ -7,30 +7,41 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authToken = request.cookies.get("auth-token")?.value
     const accessToken = request.cookies.get("sb-access-token")?.value
 
-    if (!accessToken) {
+    if (!authToken && !accessToken) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const { id: orderId } = await params
 
-    const authenticatedSupabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
+    let userId: string
+
+    if (authToken) {
+      // OTP-based auth
+      userId = authToken
+    } else {
+      // OAuth/password auth
+      const authenticatedSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          global: {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
           },
-        },
+        }
+      )
+
+      const { data: { user }, error: userError } = await authenticatedSupabase.auth.getUser()
+
+      if (userError || !user) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 })
       }
-    )
 
-    const { data: { user }, error: userError } = await authenticatedSupabase.auth.getUser()
-
-    if (userError || !user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
+      userId = user.id
     }
 
     // Use service role client to bypass RLS
@@ -64,7 +75,7 @@ export async function GET(
         )
       `)
       .eq("id", orderId)
-      .eq("customer_id", user.id)
+      .eq("customer_id", userId)
       .single()
 
     if (orderError) {

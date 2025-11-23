@@ -15,6 +15,9 @@ interface Product {
   category: string
   status: string
   retailer_id: string
+  retailer?: {
+    pincode?: string
+  }
 }
 
 interface ProductGridProps {
@@ -61,9 +64,39 @@ export default function ProductGrid({ onAddToCart, selectedCategory, searchTerm 
     return matchesCategory && matchesSearch
   })
 
+  // Calculate distance between two pincodes based on first 4 digits match
+  const calculatePincodeDistance = (userPincode: string, retailerPincode: string): number => {
+    if (!userPincode || !retailerPincode) return 999999 // No pincode = far away
+    
+    // Extract first 4 digits for region matching
+    const userRegion = userPincode.substring(0, 4)
+    const retailerRegion = retailerPincode.substring(0, 4)
+    
+    // Count matching digits from the start
+    let matchingDigits = 0
+    for (let i = 0; i < Math.min(userPincode.length, retailerPincode.length); i++) {
+      if (userPincode[i] === retailerPincode[i]) {
+        matchingDigits++
+      } else {
+        break
+      }
+    }
+    
+    // Return distance score (lower = closer)
+    // 6 matching digits = same pincode (distance 0)
+    // 4 matching digits = same region (distance 2)
+    // 0 matching digits = far away (distance 6)
+    return 6 - matchingDigits
+  }
+
   // Apply sorting
   const sortedProducts = [...filteredProducts].sort((a, b) => {
     switch (sortBy) {
+      case "distance":
+        if (!userPincode) return 0 // No sorting if user has no pincode
+        const distanceA = calculatePincodeDistance(userPincode, a.retailer?.pincode || "")
+        const distanceB = calculatePincodeDistance(userPincode, b.retailer?.pincode || "")
+        return distanceA - distanceB
       case "price-asc":
         return a.price - b.price
       case "price-desc":

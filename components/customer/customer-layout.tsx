@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
-import { Moon, Sun, Home, User, Package, Heart, Settings, ChevronDown, Filter } from "lucide-react"
+import { Moon, Sun, Home, User, Package, Heart, Settings, ChevronDown, Filter, Calendar } from "lucide-react"
 
 interface CustomerLayoutProps {
   children: React.ReactNode
@@ -158,6 +158,14 @@ export default function CustomerLayout({
                   </Button>
                   <Button
                     variant="ghost"
+                    onClick={() => router.push("/customer/offline-orders")}
+                    className="whitespace-nowrap gap-2"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    Pickup Orders
+                  </Button>
+                  <Button
+                    variant="ghost"
                     onClick={() => router.push("/customer/wishlist")}
                     className="whitespace-nowrap gap-2"
                   >
@@ -212,6 +220,9 @@ export default function CustomerLayout({
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => onSortChange("featured")} className={sortBy === "featured" ? "bg-orange-500/10 text-orange-600 font-medium" : ""}>
                           Featured
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onSortChange("distance")} className={sortBy === "distance" ? "bg-orange-500/10 text-orange-600 font-medium" : ""}>
+                          📍 Nearest First
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onSortChange("price-asc")} className={sortBy === "price-asc" ? "bg-orange-500/10 text-orange-600 font-medium" : ""}>
                           Price: Low to High
