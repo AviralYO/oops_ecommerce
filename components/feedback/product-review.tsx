@@ -136,21 +136,22 @@ export default function ProductReview({
               {[5, 4, 3, 2, 1].map((star) => {
                 const count = reviews.filter((r) => r.rating === star).length
                 const percentage = reviews.length > 0 ? (count / reviews.length) * 100 : 0
-              return (
-                <div key={star} className="flex items-center gap-2">
-                  <span className="text-sm w-12">{star} ★</span>
-                  <div className="flex-1 h-2 bg-accent rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-linear-to-r from-orange-500 to-amber-500"
-                      style={{ width: `${percentage}%` }}
-                    ></div>
+                return (
+                  <div key={star} className="flex items-center gap-2">
+                    <span className="text-sm w-12">{star} ★</span>
+                    <div className="flex-1 h-2 bg-accent rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-orange-500 to-amber-500"
+                        style={{ width: `${percentage}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-xs text-muted-foreground w-8 text-right">{count}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground w-8 text-right">{count}</span>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
-        </div>
+        )}
       </Card>
 
       {/* Write Review */}
@@ -187,7 +188,7 @@ export default function ProductReview({
           <Button
             type="submit"
             disabled={isSubmitting || rating === 0 || !reviewText}
-            className="bg-linear-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-semibold"
+            className="bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-semibold"
           >
             {isSubmitting ? "Submitting..." : "Submit Review"}
           </Button>
@@ -212,11 +213,11 @@ export default function ProductReview({
                   <div className="flex items-center gap-2">
                     <span className="text-sm">{"⭐".repeat(review.rating)}</span>
                     <span className="text-xs text-muted-foreground">{new Date(review.created_at).toLocaleDateString()}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-            <p className="text-muted-foreground mb-3 text-sm">{review.review_text}</p>
-          </Card>
+              <p className="text-muted-foreground mb-3 text-sm">{review.review_text}</p>
+            </Card>
           ))
         )}
       </div>
