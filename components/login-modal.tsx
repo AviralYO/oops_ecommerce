@@ -183,6 +183,9 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
       console.log("[v0] Login successful, redirecting based on role:", userData?.role)
 
       // Use full page reload to ensure auth context updates
+      // Small delay to ensure cookies are set
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
       if (userData?.role === "retailer") {
         window.location.href = "/retailer"
       } else if (userData?.role === "wholesaler") {
@@ -213,6 +216,9 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
       console.log("[v0] Signup successful, redirecting based on role:", userData?.role)
 
       // Use full page reload to ensure auth context updates
+      // Small delay to ensure cookies are set
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
       if (userData?.role === "retailer") {
         window.location.href = "/retailer"
       } else if (userData?.role === "wholesaler") {
