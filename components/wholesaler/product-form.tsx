@@ -16,7 +16,8 @@ export default function WholesalerProductForm({ onSubmit }: ProductFormProps) {
     name: "",
     description: "",
     quantity: "",
-    price: "",
+    wholesaler_price: "",
+    retail_price: "",
     category: "",
     image: null as File | null,
   })
@@ -40,19 +41,21 @@ export default function WholesalerProductForm({ onSubmit }: ProductFormProps) {
     setLoading(true)
 
     try {
-      const submitData = new FormData()
-      submitData.append("name", formData.name)
-      submitData.append("description", formData.description)
-      submitData.append("quantity", formData.quantity)
-      submitData.append("price", formData.price)
-      submitData.append("category", formData.category)
-      if (formData.image) {
-        submitData.append("image", formData.image)
+      const productData = {
+        name: formData.name,
+        description: formData.description,
+        quantity: parseInt(formData.quantity),
+        wholesaler_price: parseFloat(formData.wholesaler_price),
+        retail_price: parseFloat(formData.retail_price),
+        category: formData.category,
       }
 
       const response = await fetch("/api/products", {
         method: "POST",
-        body: submitData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(productData),
       })
 
       if (response.ok) {
@@ -61,7 +64,8 @@ export default function WholesalerProductForm({ onSubmit }: ProductFormProps) {
           name: "",
           description: "",
           quantity: "",
-          price: "",
+          wholesaler_price: "",
+          retail_price: "",
           category: "",
           image: null,
         })
@@ -106,32 +110,48 @@ export default function WholesalerProductForm({ onSubmit }: ProductFormProps) {
           />
         </div>
 
+        <div>
+          <Label htmlFor="quantity">Stock Quantity</Label>
+          <Input
+            id="quantity"
+            type="number"
+            value={formData.quantity}
+            onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+            required
+            min="0"
+            placeholder="100"
+          />
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="quantity">Stock Quantity</Label>
+            <Label htmlFor="wholesaler_price">Wholesale Price (₹)</Label>
             <Input
-              id="quantity"
+              id="wholesaler_price"
               type="number"
-              value={formData.quantity}
-              onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+              value={formData.wholesaler_price}
+              onChange={(e) => setFormData({ ...formData, wholesaler_price: e.target.value })}
               required
               min="0"
-              placeholder="100"
+              step="0.01"
+              placeholder="800.00"
             />
+            <p className="text-xs text-muted-foreground mt-1">Price you sell to retailers</p>
           </div>
 
           <div>
-            <Label htmlFor="price">Wholesale Price (₹)</Label>
+            <Label htmlFor="retail_price">Suggested Retail Price (₹)</Label>
             <Input
-              id="price"
+              id="retail_price"
               type="number"
-              value={formData.price}
-              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+              value={formData.retail_price}
+              onChange={(e) => setFormData({ ...formData, retail_price: e.target.value })}
               required
               min="0"
               step="0.01"
               placeholder="999.00"
             />
+            <p className="text-xs text-muted-foreground mt-1">Suggested price for customers</p>
           </div>
         </div>
 
@@ -146,25 +166,7 @@ export default function WholesalerProductForm({ onSubmit }: ProductFormProps) {
           />
         </div>
 
-        <div>
-          <Label htmlFor="image">Product Image</Label>
-          <Input
-            id="image"
-            type="file"
-            accept="image/*"
-            onChange={handleImageChange}
-            className="cursor-pointer"
-          />
-          {imagePreview && (
-            <div className="mt-4">
-              <img
-                src={imagePreview}
-                alt="Preview"
-                className="w-32 h-32 object-cover rounded-lg border border-border"
-              />
-            </div>
-          )}
-        </div>
+
 
         <Button
           type="submit"

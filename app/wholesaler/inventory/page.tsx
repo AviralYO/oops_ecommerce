@@ -25,6 +25,8 @@ export default function WholesalerInventory() {
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
   const [inventory, setInventory] = useState<InventoryItem[]>([])
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editValues, setEditValues] = useState<Partial<InventoryItem>>({})
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -71,6 +73,72 @@ export default function WholesalerInventory() {
     if (item.stock < item.reorderLevel / 2) return { label: "Critical", color: "bg-red-500" }
     if (item.stock < item.reorderLevel) return { label: "Low Stock", color: "bg-yellow-500" }
     return { label: "In Stock", color: "bg-green-500" }
+  }
+
+  const handleEdit = (item: InventoryItem) => {
+    setEditingId(item.id)
+    setEditValues({
+      wholesalePrice: item.wholesalePrice,
+      retailPrice: item.retailPrice,
+      reorderLevel: item.reorderLevel
+    })
+  }
+
+  const handleSaveEdit = async (itemId: number) => {
+    try {
+      const response = await fetch(`/api/products/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wholesale_price: editValues.wholesalePrice,
+          retail_price: editValues.retailPrice
+        })
+      })
+
+      if (response.ok) {
+        // Refresh inventory
+        const invResponse = await fetch("/api/products?wholesaler=true&inventory=true")
+        if (invResponse.ok) {
+          const data = await invResponse.json()
+          setInventory(data.products || [])
+        }
+        setEditingId(null)
+        setEditValues({})
+      }
+    } catch (error) {
+      console.error("Error updating product:", error)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingId(null)
+    setEditValues({})
+  }
+
+  const handleRestock = async (itemId: number, currentStock: number) => {
+    const amount = prompt("Enter amount to add to stock:", "0")
+    if (!amount || isNaN(Number(amount))) return
+
+    const newStock = currentStock + Number(amount)
+
+    try {
+      const response = await fetch(`/api/products/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stock_quantity: newStock })
+      })
+
+      if (response.ok) {
+        // Refresh inventory
+        const invResponse = await fetch("/api/products?wholesaler=true&inventory=true")
+        if (invResponse.ok) {
+          const data = await invResponse.json()
+          setInventory(data.products || [])
+        }
+      }
+    } catch (error) {
+      console.error("Error restocking:", error)
+    }
   }
 
   return (
@@ -156,24 +224,77 @@ export default function WholesalerInventory() {
                           <div className="text-xs text-muted-foreground">Reorder: {item.reorderLevel}</div>
                         </div>
 
-                        <div className="text-right">
-                          <div className="text-sm text-muted-foreground">Wholesale</div>
-                          <div className="font-semibold text-lg">₹{item.wholesalePrice}</div>
-                        </div>
+                        {editingId === item.id ? (
+                          <>
+                            <div className="text-right">
+                              <div className="text-sm text-muted-foreground mb-1">Wholesale ₹</div>
+                              <Input
+                                type="number"
+                                value={editValues.wholesalePrice || ""}
+                                onChange={(e) => setEditValues({...editValues, wholesalePrice: Number(e.target.value)})}
+                                className="w-24 h-8"
+                              />
+                            </div>
 
-                        <div className="text-right">
-                          <div className="text-sm text-muted-foreground">Retail</div>
-                          <div className="font-semibold text-lg">₹{item.retailPrice}</div>
-                        </div>
+                            <div className="text-right">
+                              <div className="text-sm text-muted-foreground mb-1">Retail ₹</div>
+                              <Input
+                                type="number"
+                                value={editValues.retailPrice || ""}
+                                onChange={(e) => setEditValues({...editValues, retailPrice: Number(e.target.value)})}
+                                className="w-24 h-8"
+                              />
+                            </div>
 
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm">
-                            Edit
-                          </Button>
-                          <Button variant="outline" size="sm" className="text-purple-500">
-                            Restock
-                          </Button>
-                        </div>
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="default" 
+                                size="sm" 
+                                onClick={() => handleSaveEdit(item.id)}
+                                className="bg-green-500 hover:bg-green-600"
+                              >
+                                Save
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={handleCancelEdit}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="text-right">
+                              <div className="text-sm text-muted-foreground">Wholesale</div>
+                              <div className="font-semibold text-lg">₹{item.wholesalePrice || "N/A"}</div>
+                            </div>
+
+                            <div className="text-right">
+                              <div className="text-sm text-muted-foreground">Retail</div>
+                              <div className="font-semibold text-lg">₹{item.retailPrice || "N/A"}</div>
+                            </div>
+
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleEdit(item)}
+                              >
+                                Edit
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="text-purple-500"
+                                onClick={() => handleRestock(item.id, item.stock)}
+                              >
+                                Restock
+                              </Button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </Card>

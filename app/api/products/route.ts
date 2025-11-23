@@ -5,7 +5,9 @@ import { z } from "zod"
 const createProductSchema = z.object({
   name: z.string().min(1, "Product name is required"),
   description: z.string().min(1, "Description is required"),
-  price: z.number().positive("Price must be positive"),
+  price: z.number().positive("Price must be positive").optional(), // Keep for backward compatibility
+  wholesaler_price: z.number().positive("Wholesaler price must be positive").optional(),
+  retail_price: z.number().positive("Retail price must be positive").optional(),
   quantity: z.number().int().nonnegative("Quantity must be non-negative"),
   category: z.string().min(1, "Category is required"),
 })
@@ -114,15 +116,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Check if user is a retailer
+    // Check if user is a retailer or wholesaler
     const { data: profile } = await authenticatedSupabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
       .single()
 
-    if (!profile || profile.role !== "retailer") {
-      return NextResponse.json({ error: "Only retailers can create products" }, { status: 403 })
+    if (!profile || (profile.role !== "retailer" && profile.role !== "wholesaler")) {
+      return NextResponse.json({ error: "Only retailers and wholesalers can create products" }, { status: 403 })
     }
 
     const body = await request.json()
@@ -136,14 +138,34 @@ export async function POST(request: NextRequest) {
       status = "low-stock"
     }
 
+    // Determine source_type and prices based on user role
+    const source_type = profile.role === "wholesaler" ? "wholesaler" : "retailer"
+    
+    // For wholesalers: use wholesaler_price and retail_price
+    // For retailers: use price as retail_price
+    const productData: any = {
+      name: validatedData.name,
+      description: validatedData.description,
+      quantity: validatedData.quantity,
+      category: validatedData.category,
+      retailer_id: user.id,
+      status,
+      source_type,
+    }
+
+    if (source_type === "wholesaler") {
+      productData.wholesaler_price = validatedData.wholesaler_price || validatedData.price
+      productData.retail_price = validatedData.retail_price || validatedData.price
+    } else {
+      // Retailer products - use price as retail_price
+      productData.price = validatedData.price
+      productData.retail_price = validatedData.price
+    }
+
     // Create product in database using authenticated client
     const { data: product, error } = await authenticatedSupabase
       .from("products")
-      .insert({
-        ...validatedData,
-        retailer_id: user.id,
-        status,
-      })
+      .insert(productData)
       .select()
       .single()
 
