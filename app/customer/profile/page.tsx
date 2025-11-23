@@ -14,21 +14,33 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
+  const [pincode, setPincode] = useState("")
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (user) {
       setName(user.name || "")
       setEmail(user.email || "")
+      setPincode(user.pincode || "")
     }
   }, [user])
 
   const handleSave = async () => {
     setLoading(true)
     try {
-      // TODO: Implement profile update API
-      console.log("Saving profile:", { name, email })
-      setIsEditing(false)
+      const response = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, pincode }),
+      })
+
+      if (response.ok) {
+        setIsEditing(false)
+        // Refresh the page to update user data
+        window.location.reload()
+      } else {
+        console.error("Failed to update profile")
+      }
     } catch (error) {
       console.error("Error updating profile:", error)
     } finally {
@@ -93,6 +105,26 @@ export default function ProfilePage() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="pincode">Pincode</Label>
+              {isEditing ? (
+                <Input
+                  id="pincode"
+                  value={pincode}
+                  onChange={(e) => setPincode(e.target.value)}
+                  placeholder="Enter your pincode (e.g., 110001)"
+                  maxLength={6}
+                />
+              ) : (
+                <div className="px-3 py-2 border border-border rounded-md bg-muted">
+                  {user.pincode || "Not set"}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Your pincode helps show nearby products
+              </p>
+            </div>
+
+            <div className="space-y-2">
               <Label>Role</Label>
               <div className="px-3 py-2 border border-border rounded-md bg-muted capitalize">
                 {user.role}
@@ -121,6 +153,7 @@ export default function ProfilePage() {
                     onClick={() => {
                       setIsEditing(false)
                       setName(user.name || "")
+                      setPincode(user.pincode || "")
                     }}
                     disabled={loading}
                   >

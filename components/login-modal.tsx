@@ -182,17 +182,14 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
       const userData = await login(email, password)
       console.log("[v0] Login successful, redirecting based on role:", userData?.role)
 
-      // Redirect based on ACTUAL user role from database, not selected role
-      setTimeout(() => {
-        if (userData?.role === "retailer") {
-          router.push("/retailer")
-        } else if (userData?.role === "wholesaler") {
-          router.push("/wholesaler")
-        } else {
-          router.push("/customer")
-        }
-        onClose()
-      }, 500)
+      // Use full page reload to ensure auth context updates
+      if (userData?.role === "retailer") {
+        window.location.href = "/retailer"
+      } else if (userData?.role === "wholesaler") {
+        window.location.href = "/wholesaler"
+      } else {
+        window.location.href = "/customer"
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed")
     } finally {
@@ -215,17 +212,14 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
       const userData = await signup(name, email, password, selectedRole || "customer", pincode)
       console.log("[v0] Signup successful, redirecting based on role:", userData?.role)
 
-      // Redirect based on ACTUAL user role from database
-      setTimeout(() => {
-        if (userData?.role === "retailer") {
-          router.push("/retailer")
-        } else if (userData?.role === "wholesaler") {
-          router.push("/wholesaler")
-        } else {
-          router.push("/customer")
-        }
-        onClose()
-      }, 500)
+      // Use full page reload to ensure auth context updates
+      if (userData?.role === "retailer") {
+        window.location.href = "/retailer"
+      } else if (userData?.role === "wholesaler") {
+        window.location.href = "/wholesaler"
+      } else {
+        window.location.href = "/customer"
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Signup failed")
     } finally {
