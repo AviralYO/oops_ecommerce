@@ -12,22 +12,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Function to check auth status
+  const checkAuth = async () => {
+    try {
+      const response = await fetch("/api/auth/me", {
+        credentials: 'include',
+        cache: 'no-store'
+      })
+      if (response.ok) {
+        const userData = await response.json()
+        setUser(userData)
+        console.log("[AuthProvider] User authenticated:", userData.email)
+        return userData
+      } else {
+        setUser(null)
+        console.log("[AuthProvider] No user authenticated")
+        return null
+      }
+    } catch (err) {
+      console.error("[AuthProvider] Auth check failed:", err)
+      setUser(null)
+      return null
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Check if user is already logged in on mount
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await fetch("/api/auth/me")
-        if (response.ok) {
-          const userData = await response.json()
-          setUser(userData)
-        }
-      } catch (err) {
-        console.error("Auth check failed:", err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
     checkAuth()
   }, [])
 
@@ -100,6 +112,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
+  const refreshAuth = async () => {
+    return await checkAuth()
+  }
+
   const value = {
     user,
     loading,
@@ -107,6 +123,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     login,
     signup,
     logout,
+    refreshAuth,
     isAuthenticated: user !== null,
   }
 

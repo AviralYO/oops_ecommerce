@@ -18,6 +18,7 @@ export interface AuthContextType {
   login: (email: string, password: string) => Promise<User>
   signup: (name: string, email: string, password: string, role: string, pincode?: string) => Promise<User>
   logout: () => Promise<void>
+  refreshAuth: () => Promise<User | null>
   isAuthenticated: boolean
 }
 

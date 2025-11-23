@@ -27,7 +27,7 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
   const [isSignup, setIsSignup] = useState(true) // true for signup, false for login
   const [devOtp, setDevOtp] = useState<string | null>(null) // For development testing
 
-  const { login, signup } = useAuth()
+  const { login, signup, refreshAuth } = useAuth()
   const router = useRouter()
 
   const DEMO_CREDENTIALS = {
@@ -120,8 +120,15 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
         // Go to details entry for signup
         setMode("enter-details")
       } else {
-        // Login successful - reload to update auth context
-        window.location.href = `/${data.role}`
+        // Login successful - wait for cookie to be set, then refresh auth
+        await new Promise(resolve => setTimeout(resolve, 200))
+        const userData = await refreshAuth()
+        if (userData) {
+          onClose()
+          window.location.href = `/${userData.role}`
+        } else {
+          throw new Error("Authentication failed - please try again")
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "OTP verification failed")
@@ -159,8 +166,15 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
         throw new Error(data.error || "Signup failed")
       }
 
-      // Signup successful - reload to update auth context
-      window.location.href = `/${data.role}`
+      // Signup successful - wait for cookie to be set, then refresh auth
+      await new Promise(resolve => setTimeout(resolve, 200))
+      const userData = await refreshAuth()
+      if (userData) {
+        onClose()
+        window.location.href = `/${userData.role}`
+      } else {
+        throw new Error("Authentication failed - please try again")
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Signup failed")
     } finally {
@@ -182,17 +196,10 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
       const userData = await login(email, password)
       console.log("[v0] Login successful, redirecting based on role:", userData?.role)
 
-      // Use full page reload to ensure auth context updates
-      // Small delay to ensure cookies are set
-      await new Promise(resolve => setTimeout(resolve, 100))
-      
-      if (userData?.role === "retailer") {
-        window.location.href = "/retailer"
-      } else if (userData?.role === "wholesaler") {
-        window.location.href = "/wholesaler"
-      } else {
-        window.location.href = "/customer"
-      }
+      // Show success message in the modal itself
+      setError("✅ Login successful! Please close this window and click Login again to access your dashboard.")
+      setEmail("")
+      setPassword("")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed")
     } finally {
@@ -215,17 +222,12 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
       const userData = await signup(name, email, password, selectedRole || "customer", pincode)
       console.log("[v0] Signup successful, redirecting based on role:", userData?.role)
 
-      // Use full page reload to ensure auth context updates
-      // Small delay to ensure cookies are set
-      await new Promise(resolve => setTimeout(resolve, 100))
-      
-      if (userData?.role === "retailer") {
-        window.location.href = "/retailer"
-      } else if (userData?.role === "wholesaler") {
-        window.location.href = "/wholesaler"
-      } else {
-        window.location.href = "/customer"
-      }
+      // Show success message in the modal itself
+      setError("✅ Account created successfully! Please close this window and click Login again to access your dashboard.")
+      setName("")
+      setEmail("")
+      setPassword("")
+      setPincode("")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Signup failed")
     } finally {
@@ -507,9 +509,16 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
                 )}
 
                 {mode === "login" && (
-                  <p className="text-xs text-muted-foreground">
-                    Demo: Use {DEMO_CREDENTIALS[selectedRole || "customer"].email} with password "password123"
-                  </p>
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      Demo: Use {DEMO_CREDENTIALS[selectedRole || "customer"].email} with password "password123"
+                    </p>
+                    <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
+                      <p className="text-xs text-blue-700 dark:text-blue-300">
+                        ℹ️ <strong>Note:</strong> If you're not redirected after login, please close this window and click Login again.
+                      </p>
+                    </div>
+                  </>
                 )}
 
                 <Button
@@ -528,6 +537,13 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
                   <div className="relative flex justify-center text-sm">
                     <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
                   </div>
+                </div>
+
+                {/* Info message for OAuth */}
+                <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    ℹ️ <strong>Note:</strong> If you're not redirected after Google sign in, please close this window and click Login again.
+                  </p>
                 </div>
 
                 {/* Google Sign In Button */}

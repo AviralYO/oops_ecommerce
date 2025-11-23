@@ -81,12 +81,14 @@ export async function POST(request: NextRequest) {
 
       // Set session cookie (7 days)
       response.cookies.set("auth-token", profiles.id, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        httpOnly: false, // Allow client-side access for debugging
+        secure: false, // Allow in development
         sameSite: "lax",
         path: "/",
         maxAge: 60 * 60 * 24 * 7,
       })
+      
+      console.log("[Auth] Setting auth-token cookie for user:", profiles.id)
 
       return response
     } else {
