@@ -57,10 +57,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    // Normalize product data - ensure price field shows retail_price for customers
+    let normalizedProducts = (products || []).map((p: any) => ({
+      ...p,
+      // Always use retail_price as the customer-facing price
+      // If retail_price doesn't exist, fall back to price (for old data)
+      price: p.retail_price || p.price
+    }))
+
     // Sort by location if user pincode is provided
-    let sortedProducts = products || []
-    if (userPincode && sortedProducts.length > 0) {
-      sortedProducts = sortedProducts.sort((a: any, b: any) => {
+    if (userPincode && normalizedProducts.length > 0) {
+      normalizedProducts = normalizedProducts.sort((a: any, b: any) => {
         const aRetailerPincode = a.retailer?.pincode
         const bRetailerPincode = b.retailer?.pincode
         
@@ -75,12 +82,12 @@ export async function GET(request: NextRequest) {
       })
     } else {
       // Default sort by created date
-      sortedProducts.sort((a: any, b: any) => 
+      normalizedProducts.sort((a: any, b: any) => 
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )
     }
 
-    return NextResponse.json({ products: sortedProducts }, { status: 200 })
+    return NextResponse.json({ products: normalizedProducts }, { status: 200 })
   } catch (error) {
     console.error("[Products] GET error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
