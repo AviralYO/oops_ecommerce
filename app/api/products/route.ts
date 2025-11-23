@@ -163,6 +163,7 @@ export async function POST(request: NextRequest) {
     if (source_type === "wholesaler") {
       productData.wholesaler_price = validatedData.wholesaler_price || validatedData.price
       productData.retail_price = validatedData.retail_price || validatedData.price
+      productData.price = validatedData.wholesaler_price || validatedData.price // Set price to wholesaler_price for NOT NULL constraint
     } else {
       // Retailer products - use price as retail_price
       productData.price = validatedData.price
