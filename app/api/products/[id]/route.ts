@@ -7,6 +7,8 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    console.log("[Products PATCH] Updating product:", params.id)
+    
     // Get user from session
     const authToken = request.cookies.get("auth-token")?.value
     const accessToken = request.cookies.get("sb-access-token")?.value
