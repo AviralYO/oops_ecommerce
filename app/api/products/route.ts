@@ -62,7 +62,11 @@ export async function GET(request: NextRequest) {
       ...p,
       // Always use retail_price as the customer-facing price
       // If retail_price doesn't exist, fall back to price (for old data)
-      price: p.retail_price || p.price
+      price: p.retail_price || p.price,
+      // Map database snake_case to camelCase for frontend
+      wholesalePrice: p.wholesaler_price || p.wholesale_price,
+      retailPrice: p.retail_price,
+      reorderLevel: 10 // Default reorder level
     }))
 
     // Sort by location if user pincode is provided
