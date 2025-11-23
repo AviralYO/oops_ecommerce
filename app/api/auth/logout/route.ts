@@ -19,10 +19,12 @@ export async function POST(request: NextRequest) {
     // Clear Supabase auth cookies
     response.cookies.set("sb-access-token", "", {
       httpOnly: true,
+      path: "/",
       maxAge: 0,
     })
     response.cookies.set("sb-refresh-token", "", {
       httpOnly: true,
+      path: "/",
       maxAge: 0,
     })
 

@@ -59,12 +59,14 @@ export async function POST(request: NextRequest) {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
+        path: "/",
         maxAge: authData.session.expires_in || 3600,
       })
       response.cookies.set("sb-refresh-token", authData.session.refresh_token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
+        path: "/",
         maxAge: 60 * 60 * 24 * 7, // 7 days
       })
     }
